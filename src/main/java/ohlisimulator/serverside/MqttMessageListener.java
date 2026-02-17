@@ -7,19 +7,49 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ForkJoinPool;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONObject;
+
+import ohlisimulator.main.Simulator;
+import ohlisimulator.vendor.Bosun;
+import ohlisimulator.vendor.Vendor;
 
 
-public class mqttMessageListener {
+
+public class MqttMessageListener  implements Runnable{
 	MqttAsyncClient client;
 	IMqttActionListener publishListener;
 	IMqttActionListener subscribeListener;
 	IMqttActionListener connectListener;
+	private static volatile MqttMessageListener listener;
+	public static MqttMessageListener getListener(){
+		if(listener==null) {
+			synchronized(MqttMessageListener.class){
+				if(listener==null)
+					listener=new MqttMessageListener();
+			}
+		}
+		return listener;
+	}
+	
+	int cores = Runtime.getRuntime().availableProcessors();
+	ForkJoinPool pool=new ForkJoinPool(cores);	
+	ThreadLocal<Bosun> threadBosun =
+	        ThreadLocal.withInitial(() -> new Bosun());
 	boolean connected=false;
+	
 	public boolean connectBroker()throws Exception{
 		
 		String broker;
@@ -27,18 +57,20 @@ public class mqttMessageListener {
         String username;
         String password;
         String topic;
+        String ssl;
 		
         Properties props = new Properties();
-		InputStream input = mqttMessageListener.class
+		InputStream input = MqttMessageListener.class
                 .getClassLoader()
                 .getResourceAsStream("config.properties");
 		try {
 			props.load(input);
-        	broker = props.getProperty("broker");
+        	broker = props.getProperty("broker3");
         	clientId = props.getProperty("clientId");
         	username = props.getProperty("username");
         	password = props.getProperty("password");
         	topic = props.getProperty("topic");
+        	ssl=props.getProperty("ssl");
         }
         catch(Exception e) {
         	e.printStackTrace();
@@ -46,7 +78,12 @@ public class mqttMessageListener {
         }
         
         CountDownLatch latch = new CountDownLatch(1);
-
+        
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setUserName(username);
+        options.setPassword(password.toCharArray());
+      
+        if(ssl.equals("yes")) {
         FileInputStream fis = new FileInputStream("/etc/mosquitto/certs/ca.crt");
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         X509Certificate caCert = (X509Certificate) cf.generateCertificate(fis);
@@ -60,11 +97,10 @@ public class mqttMessageListener {
 
         SSLContext sslContext = SSLContext.getInstance("TLS");
         sslContext.init(null, tmf.getTrustManagers(), null);
-
-        MqttConnectOptions options = new MqttConnectOptions();
-        options.setUserName(username);
-        options.setPassword(password.toCharArray());
         options.setSocketFactory(sslContext.getSocketFactory());
+        }
+
+       
 
        client = new MqttAsyncClient(broker,
     	        clientId + "-" + System.currentTimeMillis());
@@ -82,8 +118,15 @@ public class mqttMessageListener {
 
             @Override
             public void messageArrived(String topic, MqttMessage msg) throws Exception {
-            	System.out.println("Topic:"+topic);
-                System.out.println("Received message: " + new String(msg.getPayload()));
+            	String message =new String(msg.getPayload());
+
+            	System.out.println("Message Arrived:"+message);
+            	pool.execute(() -> {
+            		System.out.println("Executing");
+            	    Vendor vendor = threadBosun.get();
+            	    MessageTask msgTask =new MessageTask(vendor, topic, msg);
+            	    msgTask.process();
+            	});
             }
 
             @Override
@@ -138,8 +181,7 @@ public class mqttMessageListener {
                     client.subscribe(topic, 0, null, subscribeListener);
                 } catch (MqttException e) {
                     e.printStackTrace();
-                    
-                    
+                     
                 }finally {
                 	connected=true;
                 	latch.countDown();
@@ -164,7 +206,37 @@ public class mqttMessageListener {
 	}
 	
 	public boolean closeClient() throws Exception{
-		client.close();
-		return true;
+		 if (client != null && client.isConnected()) {
+
+		        IMqttToken token = client.disconnect();
+		        token.waitForCompletion();   // wait until fully disconnected
+
+		        System.out.println("Disconnected successfully");
+		    }
+
+		    client.close();
+		    System.out.println("Client closed");
+
+		    return true;
 	}
+	
+	public void publishMessage (JSONObject publish,String deviceId) throws Exception{
+		String topic ="BS_Dev/"+deviceId;
+		String payload = publish.toString();
+
+		MqttMessage message = new MqttMessage(payload.getBytes());
+		message.setQos(0);
+		message.setRetained(false);
+		
+		
+		client.publish(topic,message,null,publishListener);
+	}
+
+	@Override
+	public void run() {
+		
+	}
+	
+	
+	
 }

@@ -3,6 +3,12 @@ import java.io.InputStream;
 import java.util.Properties;
 import java.util.Scanner;
 
+import ohlisimulator.serverside.*;
+import ohlisimulator.vendor.*;
+import ohlisimulator.controller.*;
+import ohlisimulator.service.*;
+import ohlisimulator.dao.*;
+
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -15,7 +21,7 @@ public class Main {
          
          
          Scanner scan=new Scanner(System.in);
-         
+         MqttMessageListener listener=MqttMessageListener.getListener();
          
         Properties props = new Properties();
 
@@ -34,7 +40,7 @@ public class Main {
         	System.out.println("Give Integer Parameters in config.properties ");
         }
         //Creating Devices
-        createDevice deviceGenerator1=new createDevice();
+        CreateDevice deviceGenerator1=new CreateDevice();
         while(true) {
 	        int success=deviceGenerator1.deviceGenerateThread(noOfDevices,deviceSerialNumberStart,
 	        		batteryCapacity,batteryVoltage);
@@ -50,9 +56,17 @@ public class Main {
 	        	System.out.println("Retrying...");
 	        	//cleanDatabase
 	        }
-	        else
+	        else {
+	        	System.out.println("No of Device Generated:"+success);
 	        	break;
+	        }
         }
+        
+        
+        
+        scan.close();
+        
+        
     }
     private static int parseInt(String x) {
     	return Integer.parseInt(x);
