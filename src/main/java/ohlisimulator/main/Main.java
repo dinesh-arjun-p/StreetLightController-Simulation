@@ -4,10 +4,7 @@ import java.util.Properties;
 import java.util.Scanner;
 
 import ohlisimulator.serverside.*;
-import ohlisimulator.vendor.*;
 import ohlisimulator.controller.*;
-import ohlisimulator.service.*;
-import ohlisimulator.dao.*;
 
 public class Main {
 
@@ -62,10 +59,12 @@ public class Main {
 	        }
         }
         
-        
+        DiscoveryRetryScheduler discoveryRetryScheduler=new DiscoveryRetryScheduler();
+        Thread t=new Thread(discoveryRetryScheduler);
+        t.start();
+        listener.setDiscoveryRetrySchedulerThread(t);
         
         scan.close();
-        
         
     }
     private static int parseInt(String x) {

@@ -1,19 +1,17 @@
 package ohlisimulator.controller;
 
 import ohlisimulator.vendor.*;
-import ohlisimulator.main.Simulator;
 import ohlisimulator.service.*;
 import org.json.JSONObject;
 
 public class RequestProcessor {
-	Simulator sim;
 
 	Vendor vendor;
 	public RequestProcessor(Vendor vendor){
 		this.vendor=vendor;
 	}
 	Service service=new Service(this);
-	public boolean registerDevice(int SerialNumber,JSONObject device) {
+	public boolean registerDevice(String SerialNumber,JSONObject device) {
 		
 		return service.registerDevice(SerialNumber,device);
 	}
@@ -29,10 +27,10 @@ public class RequestProcessor {
 	
 	
 	//Gateway Info CMD 1
-	public void obtainGatewayInfo(String topic) {
-		service.obtainGatewayInfo(topic);
+	public void obtainControllerInfo(String topic) {
+		service.getControllerInfo(topic);
 	}
-	public void publishGatewayInfo(String topic ,String...info ) {
-		vendor.publishGatewayInfo(topic,info);
+	public void publishControllerInfo(String topic,String cmd,String...info ) {
+		vendor.publishControllerInfo(topic,cmd,info);
 	}
 }

@@ -22,13 +22,14 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONObject;
 
-import ohlisimulator.main.Simulator;
+import ohlisimulator.controller.DataScheduler;
+import ohlisimulator.dao.*;
 import ohlisimulator.vendor.Bosun;
 import ohlisimulator.vendor.Vendor;
 
 
 
-public class MqttMessageListener  implements Runnable{
+public class MqttMessageListener {
 	MqttAsyncClient client;
 	IMqttActionListener publishListener;
 	IMqttActionListener subscribeListener;
@@ -49,7 +50,11 @@ public class MqttMessageListener  implements Runnable{
 	ThreadLocal<Bosun> threadBosun =
 	        ThreadLocal.withInitial(() -> new Bosun());
 	boolean connected=false;
+	Thread discoveryRetrySchedulerThread;
 	
+	public void setDiscoveryRetrySchedulerThread(Thread discoveryRetrySchedulerThread) {
+		this.discoveryRetrySchedulerThread=discoveryRetrySchedulerThread;
+	}
 	public boolean connectBroker()throws Exception{
 		
 		String broker;
@@ -209,14 +214,17 @@ public class MqttMessageListener  implements Runnable{
 		 if (client != null && client.isConnected()) {
 
 		        IMqttToken token = client.disconnect();
-		        token.waitForCompletion();   // wait until fully disconnected
+		        token.waitForCompletion(); 
 
 		        System.out.println("Disconnected successfully");
 		    }
 
 		    client.close();
 		    System.out.println("Client closed");
-
+		    DataScheduler.setStop(true);
+		    discoveryRetrySchedulerThread.interrupt();
+		    Dao dao=new DragonFly();
+		    dao.clearDatabase();
 		    return true;
 	}
 	
@@ -232,11 +240,6 @@ public class MqttMessageListener  implements Runnable{
 		client.publish(topic,message,null,publishListener);
 	}
 
-	@Override
-	public void run() {
-		
-	}
-	
 	
 	
 }
