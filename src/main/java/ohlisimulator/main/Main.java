@@ -3,8 +3,8 @@ import java.io.InputStream;
 import java.util.Properties;
 import java.util.Scanner;
 
-import ohlisimulator.serverside.*;
-import ohlisimulator.controller.*;
+import ohlisimulator.controller.DataScheduler;
+import ohlisimulator.serverside.MqttMessageListener;
 
 public class Main {
 
@@ -15,7 +15,6 @@ public class Main {
          int deviceSerialNumberStart=0;
          int batteryCapacity=0;
          int batteryVoltage =0;
-         
          
          Scanner scan=new Scanner(System.in);
          MqttMessageListener listener=MqttMessageListener.getListener();
@@ -59,10 +58,12 @@ public class Main {
 	        }
         }
         
-        DiscoveryRetryScheduler discoveryRetryScheduler=new DiscoveryRetryScheduler();
-        Thread t=new Thread(discoveryRetryScheduler);
-        t.start();
-        listener.setDiscoveryRetrySchedulerThread(t);
+        
+        
+        
+        DataScheduler datascheduler=new DataScheduler();
+        listener.setDataScheduler(datascheduler);
+        datascheduler.start();
         
         scan.close();
         

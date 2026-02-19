@@ -33,4 +33,9 @@ public class RequestProcessor {
 	public void publishControllerInfo(String topic,String cmd,String...info ) {
 		vendor.publishControllerInfo(topic,cmd,info);
 	}
+
+	public double getFieldValue(String device,String field) {
+		
+		return service.getFieldValue(device,field);
+	}
 }

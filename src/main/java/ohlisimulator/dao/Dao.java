@@ -16,4 +16,6 @@ public abstract class Dao {
 	public abstract List<Tuple> getAllRetryDevices();
 	public abstract double getCreatedTime(String device);
 	public abstract void nextRetry(String device, long long1);
+	public abstract double getFieldValue(String device, String field);
+	public abstract List<String> getDiscoveryDeviceFilter(long duration);
 }

@@ -10,7 +10,6 @@ import org.json.JSONObject;
 import ohlisimulator.controller.RequestProcessor;
 import ohlisimulator.dao.Dao;
 import ohlisimulator.dao.DragonFly;
-import redis.clients.jedis.resps.Tuple;
 
 public class Service {
 	RequestProcessor req;
@@ -60,7 +59,8 @@ public class Service {
 		req.publishControllerInfo(topic, "1", obtainControllerInfo(topic));
 	}
 
-	public String[] obtainControllerInfo(String topic) {
+	public String[] obtainControllerInfo(String device) {
+		String topic ="device/"+device;
 		String x = dao.getLatitude(topic);
 		String y = dao.getLongitude(topic);
 		return new String[] { "1", "1", "1", x, y, "123123", "123123", "-43", "3233", "3200" };
@@ -73,28 +73,47 @@ public class Service {
 		return false;
 	}
 
-	public List<String> getCurrentRetryReadyDevice(long now,List<Long> time) {
-		List<String> devices=dao.getCurrentRetryReadyDevice(now);
-		for(String device:devices) {
-			long createdTime=(long)dao.getCreatedTime(device);
-			System.out.println("Now:"+now);
-			System.out.println("Created Time:"+createdTime);
-			long age=now-createdTime;
-			System.out.println("Age"+age);
-			for(int i=0;i<time.size();i++) {
-				if(age<=time.get(i)) {
-					System.out.println("Coming Under Time:"+time.get(i));
-					updateRetry(device,i);
-					break;
-				}
+	public List<String> getCurrentRetryReadyDevice(long now) {
+		return dao.getCurrentRetryReadyDevice(now);
+//		for(String device:devices) {
+//			long createdTime=(long)dao.getCreatedTime(device);
+//			System.out.println("Now:"+now);
+//			System.out.println("Created Time:"+createdTime);
+//			long age=now-createdTime;
+//			System.out.println("Age"+age);
+//			
+//		}
+//		return devices;
+	}
+	
+	public void processDevice(String device, long now,List<Long> time1) {
+
+	    long createdTime = (long)dao.getCreatedTime(device);
+	    long age = now - createdTime;
+
+	    for(int i=0;i<time1.size();i++) {
+			if(age<=time1.get(i)) {
+				System.out.println("Coming Under Time:"+time1.get(i));
+				updateRetry(device,i);
+				break;
 			}
 		}
-		return devices;
+
+
 	}
 
 	private void updateRetry(String device, int i) {
 		System.out.println("Going to add Duration"+duration.get(i));
 		dao.nextRetry(device,duration.get(i));
+	}
+
+	public double getFieldValue(String device, String field) {
+		return dao.getFieldValue(device,field);
+	}
+
+	public List<String> getDiscoveryDeviceFilter(long duration) {
+		
+		return dao.getDiscoveryDeviceFilter(duration);
 	}
 	
 

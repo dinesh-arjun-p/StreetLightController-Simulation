@@ -9,4 +9,5 @@ public abstract class Vendor {
 	public abstract boolean registerDevice(int deviceSerialNumberStart,JSONObject device) ;
 	public abstract void messageArrived(String topic, MqttMessage msg);
 	public abstract void publishControllerInfo(String topic,String cmd,String...info) ;
+	public abstract void publishRealTimeMetrics(String deviceId) ;
 }

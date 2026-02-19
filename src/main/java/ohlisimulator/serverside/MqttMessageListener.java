@@ -23,7 +23,8 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONObject;
 
 import ohlisimulator.controller.DataScheduler;
-import ohlisimulator.dao.*;
+import ohlisimulator.dao.Dao;
+import ohlisimulator.dao.DragonFly;
 import ohlisimulator.vendor.Bosun;
 import ohlisimulator.vendor.Vendor;
 
@@ -46,15 +47,19 @@ public class MqttMessageListener {
 	}
 	
 	int cores = Runtime.getRuntime().availableProcessors();
-	ForkJoinPool pool=new ForkJoinPool(cores);	
+	ForkJoinPool pool=new ForkJoinPool(cores-3);	
 	ThreadLocal<Bosun> threadBosun =
 	        ThreadLocal.withInitial(() -> new Bosun());
 	boolean connected=false;
 	Thread discoveryRetrySchedulerThread;
 	
-	public void setDiscoveryRetrySchedulerThread(Thread discoveryRetrySchedulerThread) {
-		this.discoveryRetrySchedulerThread=discoveryRetrySchedulerThread;
+	DataScheduler  dataScheduler;
+	
+	
+	public void setDataScheduler(DataScheduler dataScheduler) {
+		this.dataScheduler=dataScheduler;
 	}
+	
 	public boolean connectBroker()throws Exception{
 		
 		String broker;
@@ -221,10 +226,12 @@ public class MqttMessageListener {
 
 		    client.close();
 		    System.out.println("Client closed");
-		    DataScheduler.setStop(true);
-		    discoveryRetrySchedulerThread.interrupt();
 		    Dao dao=new DragonFly();
 		    dao.clearDatabase();
+//		    discoveryRetryScheduler.shutdown();
+		    dataScheduler.shutdown();
+		
+		    
 		    return true;
 	}
 	
@@ -239,6 +246,7 @@ public class MqttMessageListener {
 		
 		client.publish(topic,message,null,publishListener);
 	}
+
 
 	
 	
