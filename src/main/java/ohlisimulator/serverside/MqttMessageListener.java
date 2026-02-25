@@ -47,7 +47,7 @@ public class MqttMessageListener {
 	}
 	
 	int cores = Runtime.getRuntime().availableProcessors();
-	ForkJoinPool pool=new ForkJoinPool(cores-3);	
+	ForkJoinPool pool=new ForkJoinPool(cores+4);	
 	ThreadLocal<Bosun> threadBosun =
 	        ThreadLocal.withInitial(() -> new Bosun());
 	boolean connected=false;

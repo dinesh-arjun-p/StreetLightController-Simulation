@@ -1,11 +1,12 @@
 package ohlisimulator.dao;
 
 import java.util.List;
+import java.util.Map;
 
 import redis.clients.jedis.resps.Tuple;
 
 public abstract class Dao {
-	public abstract boolean registerDevice(String SerialNumber,String x,String y,long time,List<Long>duration);
+	public abstract boolean registerDevice(String SerialNumber,String x,String y,long time,List<Long>duration, long batteryCapacity, int batteryVoltage);
 	public abstract void markDiscovered(String deviceId) ;
 	public abstract String getLatitude(String topic);
 	public abstract String getLongitude(String topic);
@@ -14,8 +15,60 @@ public abstract class Dao {
 	public abstract void updateRetry(String device,long time);
 	public abstract void clearDatabase();
 	public abstract List<Tuple> getAllRetryDevices();
+	public abstract List<String> getAllDevices();
 	public abstract double getCreatedTime(String device);
 	public abstract void nextRetry(String device, long long1);
 	public abstract double getFieldValue(String device, String field);
 	public abstract List<String> getDiscoveryDeviceFilter(long duration);
+	public abstract int getLOADORCHANGE(String device);
+	public abstract void markAllDiscovered();
+	public abstract long getBatCurEnergy(String device);
+	public abstract long getBatCapEnergy(String device);
+	public abstract void setBatCapSoc(String device, int batteryCapSoc);
+	public abstract void setBatI10ma(String device, double number);
+	public abstract void setBatU100mv(String device, double batVoltage);
+	public abstract void setLoadOrChange(String device, int i);
+	public abstract void setPvU100mv(String device, double panelVoltage);
+	public abstract void setPvI10ma(String device, double panelCurrent);
+	public abstract void setChargePower1w(String device, double d);
+	public abstract void setPanelTemp(String device, double temp);
+	public abstract double getPanelTemp(String device);
+	public abstract double getMinBatUInDay100mv(String device);
+	public abstract double getBatU100mv(String device);
+	public abstract void setMinBatUInDay100mv(String device, double curVoltage);
+	public abstract void setMaxBatUInDay100mv(String device, double curVoltage);
+	public abstract double getMaxBatUInDay100mv(String device);
+	public abstract double getBatI10ma(String device);
+	public abstract double getMaxChargeBatIInDay10ma(String device);
+	public abstract double getMaxDischargeBatIInDay10ma(String device);
+	public abstract void setMaxChargeBatIInDay10ma(String device, double curCurrent);
+	public abstract void setMaxDischargeBatIInDay10ma(String device, double curCurrent);
+	public abstract double getMaxChargePowerInDay1w(String device);
+	public abstract void setMaxChargePowerInDay1w(String device, double curPower);
+	public abstract double getMaxDischargePowerInDay1w(String device);
+	public abstract void setMaxDischargePowerInDay1w(String device, double curPower);
+	public abstract void setChargeWhInDay(String device, double i);
+	public abstract void setDischargeWhInDay(String device, double i);
+	public abstract double getChargeWhInDay(String device);
+	public abstract double getChargePower1w(String device);
+	public abstract double getDischargeWhInDay(String device);
+	public abstract int getDaysTotal(String device);
+	public abstract void setDaysTotal(String device, int i);
+	public abstract double getChargeWhTotal(String device);
+	public abstract void setChargeWhTotal(String device, double historyDailyCharge);
+	public abstract double getDischargeWhTotal(String device);
+	public abstract void setDischargeWhTotal(String device, double historyDailyDischarge);
+	public abstract double getDischargeAhTotal(String device);
+	public abstract void setDischargeAhTotal(String device, double historyDailyDischarge);
+	public abstract double getChargeAhTotal(String device);
+	public abstract void setDayLengthIs(String device, long seconds);
+	public abstract void setNightLengthIs(String device, long seconds);
+	public abstract void setSunRise(String device, String string);
+	public abstract void setSunSet(String device, String string);
+	public abstract void setBatCurEnergy(String device, long batCurCap);
+	public abstract void setUpdate(String device,Map<String,String> data);
+	public abstract void setLedLevel(String device, int level);
+	public abstract double getLedCurrent(String device);
+	public abstract double getLedU100mv(String device);
+	public abstract double getLedPowerIn(String device);
 }

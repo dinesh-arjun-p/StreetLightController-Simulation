@@ -13,7 +13,7 @@ public class Main {
     	
     	 int noOfDevices=0;
          int deviceSerialNumberStart=0;
-         int batteryCapacity=0;
+         long batteryCapacity=0;
          int batteryVoltage =0;
          
          Scanner scan=new Scanner(System.in);
@@ -29,8 +29,14 @@ public class Main {
         try {
         noOfDevices = parseInt(props.getProperty("noOfDevices"));
         deviceSerialNumberStart = parseInt(props.getProperty("deviceSerialNumberStart"));
-        batteryCapacity = parseInt(props.getProperty("batteryCapacity"));
         batteryVoltage = parseInt(props.getProperty("batteryVoltage"));
+	        if(batteryVoltage==12) {
+	        	batteryCapacity = parseInt(props.getProperty("BatteryAmpereHours1"))*3600*1000;
+	        	System.out.println("Battery Capacity from Main:"+batteryCapacity);
+	        }
+	        if(batteryVoltage==24) {
+	        	batteryCapacity = parseInt(props.getProperty("BatteryAmpereHours2"))*3600*1000;
+	        }
         }
         catch(Exception e) {
         	System.out.println("Give Integer Parameters in config.properties ");

@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 
 public abstract class Vendor {
-	public abstract boolean deviceGenerated(int deviceSerialNumberStart,int batteryCapacity,int batteryVoltage);
+	public abstract boolean deviceGenerated(int deviceSerialNumberStart,long batteryCapacity,int batteryVoltage);
 	public abstract boolean registerDevice(int deviceSerialNumberStart,JSONObject device) ;
 	public abstract void messageArrived(String topic, MqttMessage msg);
 	public abstract void publishControllerInfo(String topic,String cmd,String...info) ;

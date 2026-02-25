@@ -11,9 +11,9 @@ public class RequestProcessor {
 		this.vendor=vendor;
 	}
 	Service service=new Service(this);
-	public boolean registerDevice(String SerialNumber,JSONObject device) {
+	public boolean registerDevice(String SerialNumber,JSONObject device,long batteryCapacity, int batteryVoltage) {
 		
-		return service.registerDevice(SerialNumber,device);
+		return service.registerDevice(SerialNumber,device,batteryCapacity, batteryVoltage);
 	}
 	
 	//Register Device Cmd 0
