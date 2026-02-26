@@ -3,12 +3,12 @@ package ohlisimulator.dao;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import ohlisimulator.dao.DragonFlyBosunRegisters.DragonFlyBosunFieldName;
 import ohlisimulator.main.SunRiseSunSetCalc;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -17,13 +17,14 @@ import redis.clients.jedis.resps.Tuple;
 public class DragonFly extends Dao {
 
 	private static final JedisPool pool = new JedisPool("localhost", 6379);
-	static Properties props;
-	static InputStream input;
-	static int batteryVoltage;
-	static double batteryFullChargeVoltage = 0;
-	static double batteryRechargeVoltage = 0;
-	static int ledRatedPower = 0;
-	static int ledRatedVoltage = 0;
+	Properties props;
+	InputStream input;
+	int batteryVoltage;
+	double batteryFullChargeVoltage = 0;
+	double batteryRechargeVoltage = 0;
+	int ledRatedPower = 0;
+	int ledRatedVoltage = 0;
+	long dataSchedulerDuration=0;
 	static String region;
 
 	{
@@ -46,11 +47,15 @@ public class DragonFly extends Dao {
 			ledRatedPower = Integer.parseInt(props.getProperty("LedRatedPower"));
 			ledRatedVoltage = Integer.parseInt(props.getProperty("LedVoltage"));
 			region=props.getProperty("Region");
+			dataSchedulerDuration=Long.parseLong(props.getProperty("dataSchedulerDuration"));
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	
 
 	public boolean registerDevice(String deviceId, String x, String y, long time, List<Long> duration,
 			long batteryCapacity, int batteryVoltage) {
@@ -96,13 +101,51 @@ public class DragonFly extends Dao {
 		setNightLengthIs(device, 0);
 		setBatFullU100mv(device);
 		setBatRechargeU100mv(device);
-		setLedCurrent(device,2);
+		setDataSchedulerDuration(device,dataSchedulerDuration);
+		
+		setLedCurrent(device,0);
 		setLedLevel(device,0);
+		setTimePeriod(device,0);
 		
 		
 		updateRetry(deviceId, time);
 		nextRetry(deviceId, duration.get(0));
 		return true;
+	}
+
+	public void setTimePeriod(String device, int i) {
+		setTimePeriod(device,String.valueOf(i));
+	}
+
+	public void setTimePeriod(String device, String valueOf) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, "TIME_PERIOD",valueOf);
+		}
+	}
+	
+	public int getTimePeriod(String device) {
+		try (Jedis jedis = pool.getResource()) {
+			return Integer.parseInt(jedis.hget(device, "TIME_PERIOD"));
+		}
+		
+	}
+
+	public void setDataSchedulerDuration(String device,long duration) {
+		setDataSchedulerDuration(device,String.valueOf(duration));
+	}
+
+	public void setDataSchedulerDuration(String device, String valueOf) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, "DATA_SCHEDULER",valueOf);
+		}
+		
+	}
+	
+	public long getDataSchedulerDuration(String device) {
+		try (Jedis jedis = pool.getResource()) {
+			return Long.parseLong(jedis.hget(device, "DATA_SCHEDULER"));
+		}
+		
 	}
 
 	public void setLedLevel(String device, int i) {
@@ -453,13 +496,13 @@ public class DragonFly extends Dao {
 
 	public void setLedPowerIn(String device, String LED_POWER_IN) {
 		try (Jedis jedis = pool.getResource()) {
-			jedis.hset(device, "LED_POWER_IN", LED_POWER_IN);
+			jedis.hset(device, "LED_POWER_1W", LED_POWER_IN);
 		}
 	}
 	
 	public double getLedPowerIn(String device) {
 		try (Jedis jedis = pool.getResource()) {
-			return Double.parseDouble(jedis.hget(device, "LED_POWER_IN"));
+			return Double.parseDouble(jedis.hget(device, "LED_POWER_1W"));
 		}catch(NullPointerException e){
 			return 0;
 		}
@@ -834,6 +877,41 @@ public class DragonFly extends Dao {
 		return StatsReadyDevice;
 
 	}
+	
+	public List<String> getDiscoveryDeviceFilter() {
+		List<String> StatsDevice;
+		List<String> StatsReadyDevice=new ArrayList<>();
+		try (Jedis jedis = pool.getResource()) {
+			StatsDevice = jedis.zrangeByScore("discovered_devices",Double.NEGATIVE_INFINITY,
+                    Double.POSITIVE_INFINITY);
+			for (String deviceId : StatsReadyDevice) {
+				String device="device/"+deviceId;
+				long duration=getDataSchedulerDuration(device);
+				long now = System.currentTimeMillis();
+				long time = now - duration;
+				if(isScoreLesser(deviceId,time)) {
+					jedis.zadd("discovered_devices", now, deviceId);
+					StatsReadyDevice.add(deviceId);
+				}
+			}
+		}
+		return StatsReadyDevice;
+
+	}
+	
+	public boolean isScoreLesser(String deviceId, long checkTime) {
+
+	    try (Jedis jedis = pool.getResource()) {
+
+	        Double score = jedis.zscore("discovered_devices", deviceId);
+
+	        if (score == null) {
+	            return false; // device not present
+	        }
+
+	        return score < checkTime;
+	    }
+	}
 
 	@Override
 	public int getLOADORCHANGE(String device) {
@@ -848,6 +926,29 @@ public class DragonFly extends Dao {
 
 			jedis.hset(device, data);
 		}
+	}
+	
+	public void setUpdateField(String device,String field,String value) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, field,value);
+		}
+	}
+	
+	public void addTimePeriodSchedule(String deviceId,int i,int value) {
+		try (Jedis jedis = pool.getResource()) {
+			if(i/3!=1) {
+				storeTimeForSchedule(deviceId, i, value, jedis);
+			}
+		}
+	}
+
+	void storeTimeForSchedule(String deviceId, int i, int value, Jedis jedis) {
+		long now;
+		long nextTime;
+		double score=jedis.zscore("schedule_duration",deviceId+"/"+String.valueOf((i-3)/3));
+		now=(long)score;
+		nextTime=now+value;
+		jedis.zadd("schedule_duration", nextTime,deviceId+"/"+String.valueOf(i/3));
 	}
 
 }

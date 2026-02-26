@@ -71,4 +71,6 @@ public abstract class Dao {
 	public abstract double getLedCurrent(String device);
 	public abstract double getLedU100mv(String device);
 	public abstract double getLedPowerIn(String device);
+	public abstract void setUpdateField(String deviceId, String field, String value);
+	public abstract void addTimePeriodSchedule(String deviceId, int i, int value);
 }

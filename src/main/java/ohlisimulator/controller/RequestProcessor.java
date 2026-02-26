@@ -7,35 +7,50 @@ import org.json.JSONObject;
 public class RequestProcessor {
 
 	Vendor vendor;
-	public RequestProcessor(Vendor vendor){
-		this.vendor=vendor;
+
+	public RequestProcessor(Vendor vendor) {
+		this.vendor = vendor;
 	}
-	Service service=new Service(this);
-	public boolean registerDevice(String SerialNumber,JSONObject device,long batteryCapacity, int batteryVoltage) {
-		
-		return service.registerDevice(SerialNumber,device,batteryCapacity, batteryVoltage);
+
+	Service service = new Service(this);
+
+	public boolean registerDevice(String SerialNumber, JSONObject device, long batteryCapacity, int batteryVoltage) {
+
+		return service.registerDevice(SerialNumber, device, batteryCapacity, batteryVoltage);
 	}
-	
-	//Register Device Cmd 0
-	public void registration(String topic ,JSONObject msg) {
-		System.out.println("From RequestProcessor"+msg.toString());
-		if(msg.getString("STATE").equals("OK")) {
+
+	// Register Device Cmd 0
+	public void registration(String topic, JSONObject msg) {
+		System.out.println("From RequestProcessor" + msg.toString());
+		if (msg.getString("STATE").equals("OK")) {
 			service.registrationSuccess(topic);
 		}
-		System.out.println("Dicovered:"+topic);
+		System.out.println("Dicovered:" + topic);
 	}
-	
-	
-	//Gateway Info CMD 1
+
+	// Gateway Info CMD 1
 	public void obtainControllerInfo(String topic) {
 		service.getControllerInfo(topic);
 	}
-	public void publishControllerInfo(String topic,String cmd,String...info ) {
-		vendor.publishControllerInfo(topic,cmd,info);
+
+	public void publishControllerInfo(String topic, String cmd, String... info) {
+		vendor.publishControllerInfo(topic, cmd, info);
 	}
 
-	public double getFieldValue(String device,String field) {
-		
-		return service.getFieldValue(device,field);
+	public double getFieldValue(String device, String field) {
+
+		return service.getFieldValue(device, field);
+	}
+
+	public void updateField(String deviceId, String field, Object value) {
+
+		service.setUpdateField(deviceId, field, value);
+
+	}
+
+	public void updateField(String deviceId, int i, Object value) {
+
+		service.setUpdateField(deviceId, i, value);
+
 	}
 }

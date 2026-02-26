@@ -84,13 +84,10 @@ public class AutomateDatas {
 	private void updateLoad(String device) {
 		
 		System.out.println("Update Load Started");
-		if(service.getLOADORCHANGE(device)==0) {
+		
 			SunRiseSunSetCalc calc=new SunRiseSunSetCalc();
 			double x=service.getLatitude(device);
 			double y=service.getLongitude(device);
-			double panelVoltageLocal=panelVoltage;
-			double panelPowerLocal=panelPower;
-			double panelCurrentLocal=0;
 			ZonedDateTime now=ZonedDateTime.now(ZoneId.of(region));
 			ZonedDateTime sunRise=calc.getSunRise(x, y, 0);
 			ZonedDateTime sunSet=calc.getSunSet(x,y,0);
@@ -99,9 +96,16 @@ public class AutomateDatas {
 			else if(now.isBefore(sunRise))
 				sunSet=calc.getSunRise(x, y, -1);
 			if(now.isAfter(sunSet)&&now.isBefore(sunSet)) {
+				if(service.getLOADORCHANGE(device)==1) {
+					service.setLOADORCHANGE(device,0);
+				}
+				//scheduleLogic
 				service.setLampLevel(device,100);
 			}
-		}
+			else {
+				//service.setLampLevel(device,200);
+			}
+		
 		
 	}
 
@@ -139,6 +143,10 @@ public class AutomateDatas {
 				System.out.println("Panel Current:"+panelCurrentLocal);
 				//BatteryCharge
 				service.chargeFromPanel(device,panelPowerLocal);
+				if(service.getLOADORCHANGE(device)==0) {
+					//Arise Faults
+				}
+					
 			}
 			else {
 				panelPowerLocal=0;
@@ -204,6 +212,8 @@ public class AutomateDatas {
 	    return finalVoltage;
 	}
 	private void updateBattery(String device) {
+		
+		//arise Fault OverTemp
 		ZonedDateTime now=ZonedDateTime.now(ZoneId.of(region));
 		SunRiseSunSetCalc calc=new SunRiseSunSetCalc();
 		double x=service.getLatitude(device);
@@ -215,6 +225,8 @@ public class AutomateDatas {
 			//DischargingState
 			if(now.isBefore(sunSet)&&now.isAfter(sunRise)) {
 				service.dishargeWithoutConnection(device);
+				
+				
 			}
 			else {
 				service.dishargeWithConnection(device);

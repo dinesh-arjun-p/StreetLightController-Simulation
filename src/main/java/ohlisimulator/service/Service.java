@@ -123,7 +123,9 @@ public class Service {
 		dao.nextRetry(device,duration.get(i));
 	}
 
-	public double getFieldValue(String device, String field) {
+	public double getFieldValue(String deviceId, String serviceField) {
+		String device="device/"+deviceId;
+		String field=DragonFlyServiceRegisters.serviceToDao.get(serviceField);
 		return dao.getFieldValue(device,field);
 	}
 
@@ -150,6 +152,7 @@ public class Service {
 		int number = random.nextInt(50+1) + 30;
 		//Battery Current Capactity is stored in milli Amperes
 		batteryCurrentCapacity-=(number* AutomateDatas.duration);
+		System.out.println("Battery Current in dishargeWithoutConnection:"+number);
 		long batteryCapacity=dao.getBatCapEnergy(device);
 		//dao.setBatCurEnergy(device, batteryCurrentCapacity);
 		putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
@@ -161,16 +164,22 @@ public class Service {
 		dao.setUpdate(device, data);
 	}
 	
-	public void dishargeWithConnection(String device) {
+	public void dishargeWithConnection(String deviceId) {
 		Map<String,String> data=new HashMap<>();
+		String device="device/"+deviceId;
 		double ledPower=dao.getLedPowerIn(device);
 		double batVoltage=dao.getBatU100mv(device);
 		double batCurrent=ledPower/batVoltage;
+		System.out.println("Battery Power in dishargeWithConnection:"+ledPower);
+		System.out.println("Battery Voltage in dishargeWithConnection:"+batVoltage);
+		System.out.println("Battery Current in dishargeWithConnection:"+batCurrent);
 		//dao.setBatI10ma(device, batCurrent);
 		putValue(data, "batteryCurrent", batCurrent);
 		long batteryCurrentCapacity=dao.getBatCurEnergy(device);
-		batteryCurrentCapacity-=(batCurrent* AutomateDatas.duration);
+		batteryCurrentCapacity-=(batCurrent*1000* AutomateDatas.duration);
 		long batteryCapacity=dao.getBatCapEnergy(device);
+		System.out.println("Battery Current Capacity:"+batteryCurrentCapacity);
+		System.out.println("Battery Total Capacity:"+batteryCapacity);
 		putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
 		updateBatVoltage(device,batteryCurrentCapacity,batteryCapacity);
 		dao.setUpdate(device, data);
@@ -211,6 +220,8 @@ public class Service {
 			System.out.println("Changing Load or Change");
 			//dao.setLoadOrChange(device,1);
 			putValue(data,"loadOrChange",1);
+			
+			//ariseFault
 		}
 		if(batVoltage>=batteryFullChargeVoltage) {
 			System.out.println("Changing Load or Change");
@@ -418,6 +429,7 @@ public class Service {
 		batCurCap+=(cur* AutomateDatas.duration);
 		if(batCurCap>=batCap) {
 			batCurCap=batCap;
+			//Arise Fault
 		}
 		dao.setBatCurEnergy(device,batCurCap);
 		
@@ -432,13 +444,49 @@ public class Service {
 		String device="device/"+deviceId;
 		dao.setLedLevel(device,level);
 		double maxCurrent=dao.getLedCurrent(device);
-		double ledCurrent=maxCurrent*level/100;
+		double ledCurrent=(maxCurrent*level)/100;
+		System.out.println("Led Current From setLampLevel:"+ledCurrent);
 		double ledVoltage=dao.getLedU100mv(device);
 		double ledPower=ledVoltage*ledCurrent;
 		Map<String,String> data=new HashMap<>();
 		putValue(data,"loadCurrent",ledCurrent);
 		putValue(data,"loadPower",ledPower);
 		dao.setUpdate(device, data);
+		
+	}
+
+
+
+
+	public void setLOADORCHANGE(String device, int i) {
+		dao.setLoadOrChange(device, i);
+		
+	}
+
+
+
+
+	public void setUpdateField(String deviceId, String field, Object value) {
+		String device="device/"+deviceId;
+		String dbField=DragonFlyServiceRegisters.serviceToDao.get(field);
+		
+		dao.setUpdateField(deviceId, field,String.valueOf(value));
+		
+	}
+
+
+	public void setUpdateField(String deviceId, int i, Object value) {
+		if(i>=57490 && i<=57519)
+			scheduleUpdate(deviceId,i,(int)value);
+		
+	}
+
+
+
+
+	private void scheduleUpdate(String deviceId, int i, int value) {
+		if((i-57487)%3==0)
+			dao.addTimePeriodSchedule(deviceId,i-57487,value);
 		
 	}
 
