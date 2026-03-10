@@ -86,8 +86,8 @@ public abstract class Dao {
 	public abstract double getPanelUnderVoltage(String device);
 	public abstract double getDeviceTemp(String device);
 	public abstract double getOverTemp(String device);
-	public abstract double getBatOverVoltage(String device);
-	public abstract double getBatUnderVoltage(String device);
+	public abstract double getBatOverChargeVoltage(String device);
+	public abstract double getBatOverDischargeVoltage(String device);
 	public abstract double getBatOverCurrent(String device);
 	public abstract List<String> getDiscoveryDeviceFilter(long now);
 	public abstract long getManualTime(String device);
@@ -99,4 +99,10 @@ public abstract class Dao {
 	public abstract ZonedDateTime getSunRise(String device);
 	public abstract ZonedDateTime getSunSet(String device);
 	public abstract void setDeviceTemp(String device, double temp);
+	public abstract int getCannotUpdate(String device);
+	public abstract double getBatOverChargeReturnVoltage(String device);
+	public abstract double getBatOverDischargeReturnVoltage(String device);
+	public abstract double getBatEmptyChargeVoltage(String device);
+	public abstract double getBatFullChargeVoltage(String device);
+	public abstract int getBatCapSoc(String device);
 }

@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import ohlisimulator.dao.DragonFlyBosunRegisters.DragonFlyBosunFieldName;
 
 public class DragonFlyServiceRegisters {
 	
@@ -18,6 +17,7 @@ public class DragonFlyServiceRegisters {
 	
 	public static enum DragonFlyServiceFieldName {
 		loadOrChange("LOAD_OR_CHANGE",DataType.INT),
+		cannotUpdate("CANNOT_UPDATE",DataType.INT),
 	    batteryPercentage("BAT_CAP_SOC",DataType.INT),
 	    batteryCurrentCapacity("BAT_CUR_ENERGY",DataType.LONG),
 	    batteryCapacity("BAT_CAP_ENERGY",DataType.LONG),
@@ -51,6 +51,13 @@ public class DragonFlyServiceRegisters {
 		panelTemp("PANEL_TEMP",DataType.DOUBLE),
 		
 		systemVoltage("SYSTEM_VOLTAGE",DataType.INT),
+		BatteryFullChargeVoltage("BAT_FULL_U_100MV",DataType.DOUBLE),
+		BatteryEmptyChargeVoltage("BAT_EMPTY_U_100MV",DataType.DOUBLE),
+		BatteryOverChargeVoltage("BAT_OVER_VOLT",DataType.DOUBLE),
+		BatteryOverChargeReturnVoltage("BAT_RECHARGE_U_100MV",DataType.DOUBLE),
+		BatteryOverDischargeVoltage("BAT_OVER_DISCH_U",DataType.DOUBLE),
+		BatteryOverDischargeReturnVoltage("BAT_OVER_DISCHARGE_BACK_U",DataType.DOUBLE),
+		
 		
 		
 		manualModePower("MANUAL_MODE_POWER",DataType.INT),

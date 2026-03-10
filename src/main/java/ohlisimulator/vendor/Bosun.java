@@ -30,10 +30,12 @@ public class Bosun extends Vendor {
 		NIGHT_LENGHT_1S("012D"),
 		
 		SYSTEM_VOLTAGE("E003"),
-		BAT_OVER_VOLT("E005"),
+		BAT_FULL_U_100MV("E008"),
 		BAT_RECHARGE_U_100MV("E009"),
 		BAT_OVER_DISCHARGE_BACK_U("E00B"),
 		BAT_OVER_DISCH_U("E00D"),
+		BAT_OVER_VOLT("E005"),
+		BAT_UNDER_U("E00C"),
 		
 		
 		
@@ -92,11 +94,12 @@ public class Bosun extends Vendor {
 		NIGHT_LENGHT_1S(1),
 		
 		SYSTEM_VOLTAGE(1),
-		BAT_OVER_VOLT(10),
+		BAT_FULL_U_100MV(10),
 		BAT_RECHARGE_U_100MV(10),
 		BAT_OVER_DISCHARGE_BACK_U(10),
 		BAT_OVER_DISCH_U(10),
-		
+		BAT_OVER_VOLT(10),
+		BAT_UNDER_U(10),
 		
 		
 		TEST_POWER_COMMAND(1),
@@ -226,6 +229,10 @@ public class Bosun extends Vendor {
 		String deviceId = parts[1];
 		String message = new String(mqttmsg.getPayload());
 		JSONObject msg = new JSONObject(message);
+		if(deviceId.equals("alarm")) {
+			req.riseAlarm(msg);
+		}
+		else {
 		if (msg.getString("CMD").equals("0")) {
 			req.registration(topic, msg);
 		}
@@ -235,6 +242,9 @@ public class Bosun extends Vendor {
 		if (msg.getString("CMD").equals("2")) {
 			parseDData(deviceId, msg);
 		}
+		if (msg.getString("CMD").equals("3")) {
+			req.clearFault(deviceId,msg);
+		}
 		if (msg.getString("CMD").equals("4")) {
 			System.out.println("CMD0");
 			try {
@@ -243,7 +253,8 @@ public class Bosun extends Vendor {
 				e.printStackTrace();
 			}
 		}
-	}
+		}
+	}	
 
 	private void parseDData(String deviceId, JSONObject msg) {
 		boolean crcCheck = true;
@@ -386,6 +397,7 @@ public class Bosun extends Vendor {
 		StringBuffer d=new StringBuffer("0106");
 		d.append(fieldToRegister.get("WORK_STATE"));
 		d.append(String.format("%04X", newWorkState));
+		System.out.println(String.format("%04X", newWorkState));
 		d.append(getCrcCheck(d));
 		String D=d.toString();
 		JSONObject device = genericResponse(D);

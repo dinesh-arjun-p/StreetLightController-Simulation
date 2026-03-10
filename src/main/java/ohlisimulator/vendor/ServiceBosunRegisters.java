@@ -65,7 +65,12 @@ public class ServiceBosunRegisters {
 			    NIGHT_LENGHT_1S("nightLengthIs", DataType.INT),
 
 			    SYSTEM_VOLTAGE("systemVoltage",DataType.INT),
-			    BAT_OVER_VOLT("batteryOverChargeVoltage",DataType.INT),
+			    BAT_FULL_U_100MV("BatteryOverChargeVoltage",DataType.DOUBLE),
+			    BAT_RECHARGE_U_100MV("BatteryOverChargeReturnVoltage",DataType.DOUBLE),
+			    BAT_OVER_DISCH_U("BatteryOverDischargeVoltage",DataType.DOUBLE),
+			    BAT_OVER_DISCHARGE_BACK_U("BatteryOverDischargeReturnVoltage",DataType.DOUBLE),
+			    BAT_OVER_VOLT("BatteryFullChargeVoltage",DataType.DOUBLE),
+				BAT_UNDER_U("BatteryEmptyChargeVoltage",DataType.DOUBLE),
 			    
 			    
 			    

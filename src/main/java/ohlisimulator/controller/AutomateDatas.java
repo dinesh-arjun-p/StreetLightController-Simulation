@@ -13,7 +13,7 @@ import ohlisimulator.service.Service;
 import ohlisimulator.vendor.Bosun;
 import ohlisimulator.vendor.Vendor;
 
-public class AutomateDatas {
+public class AutomateDatas implements UpdateWorkState {
 	Service service = new Service();
 	int cores = Runtime.getRuntime().availableProcessors();
 	ForkJoinPool pool;
@@ -37,14 +37,11 @@ public class AutomateDatas {
 			
 			
 			if((batteryVoltage==12)) {
-				batteryRechargeVoltage = Double.parseDouble(props.getProperty("BatteryRechargeVoltage1"));
-				batteryRechargeVoltage2 = Double.parseDouble(props.getProperty("BatteryRechargeVoltage2"));
 				batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage1"));
 				panelVoltage=Double.parseDouble(props.getProperty("panelVoltage1"));
 				panelPower=Double.parseDouble(props.getProperty("panelPower1"));
 			}
 			if((batteryVoltage==24)) {
-				batteryRechargeVoltage = Double.parseDouble(props.getProperty("BatteryRechargeVoltage3"));
 				batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage2"));
 				panelVoltage=Double.parseDouble(props.getProperty("panelVoltage2"));
 				panelPower=Double.parseDouble(props.getProperty("panelPower2"));
@@ -96,125 +93,144 @@ public class AutomateDatas {
 		}
 	}
 
-	private void updateWorkState(String device) {
-		int workState=service.getWorkState(device);
-		//System.out.println("WorkState:"+workState);
-		int newWorkState=0;
-		for(int i=15;i>=0;i--) {
-			int fault=(workState>>i)&1;
-			if(fault==0) {
-			//	System.out.println("Fault 0 i "+i);
-				if(i==0) {
-					if(!service.isDeviceTempNormal(device)) 		
-						newWorkState|=1;
-				}
-				else if(i==1) {
-					if(service.isBatteryOverCurrent(device)) {
-						newWorkState|=1;
-					}
-				}
-				else if(i==2) {
-					if(service.isBatteryOverDischarge(device))
-						newWorkState|=1;
-				}
-				else if(i==3) {
-					if(service.isBatteryOverVoltage(device))
-						newWorkState|=1;
-				}
-				else if(i==4) {
-					if(service.isBatteryUnderVoltage(device))
-						newWorkState|=1;
-				}
-				else if(i==9) {
-					if(service.isPanelUnderVoltage(device)) 
-						newWorkState|=1;
-				}
-				else if(i==10) {
-					if(service.isPanelOverVoltage(device))
-						newWorkState|=1;
-				}
-				else if(i==11) {
-					if(service.isDayBurner(device))
-						newWorkState|=1;
-				}
-				else if(i==12) {
-					if(service.isNightOutage(device))
-						newWorkState|=1;
-				}
-				
-			}
-			else {
-				//System.out.println("Fault 1 i "+i);
-				if(i==0) {
-					if(service.isDeviceTempNormal(device)) 	{	
-						newWorkState&=~1;
-					}
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==1) {
-					if(!service.isBatteryOverCurrent(device)) {
-						newWorkState&=~1;
-					}else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==2) {
-					if(!service.isBatteryOverDischarge(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==3) {
-					if(!service.isBatteryOverVoltage(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==4) {
-					if(!service.isBatteryUnderVoltage(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==9) {
-					if(!service.isPanelUnderVoltage(device)) 
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==10) {
-					if(!service.isPanelOverVoltage(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==11) {
-					if(!service.isDayBurner(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				else if(i==12) {
-					if(!service.isNightOutage(device))
-						newWorkState&=~1;
-					else {
-						newWorkState|=1;
-					}
-				}
-				
-			}
-			if(i!=0)
-			newWorkState<<=1;
-			//System.out.println("New Work State:"+newWorkState);
-		}
+//	public void updateWorkState(String device) {
+//		int workState=service.getWorkState(device);
+//		//System.out.println("WorkState:"+workState);
+//		int newWorkState=0;
+//		for(int i=15;i>=0;i--) {
+//			int fault=(workState>>i)&1;
+//			if(fault==0) {
+//			//	System.out.println("Fault 0 i "+i);
+//				if(i==0) {
+//					if(!service.isDeviceTempNormal(device)) 		
+//						newWorkState|=1;
+//				}
+//				else if(i==1) {
+//					if(service.isBatteryOverCurrent(device)) {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==2) {
+//					if(service.isBatteryOverDischarge(device))
+//						newWorkState|=1;
+//				}
+//				else if(i==3) {
+//					
+//					if(service.isBatteryOverVoltage(device)) {
+//						//System.out.println("Battery Over Voltage Workstate");
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==4) {
+//					
+//					if(service.isBatteryOverDischargeVoltage(device)) {
+//						//System.out.println("Battery Under Voltage Workstate");
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==9) {
+//					if(service.isPanelUnderVoltage(device)) 
+//						newWorkState|=1;
+//				}
+//				else if(i==10) {
+//					if(service.isPanelOverVoltage(device))
+//						newWorkState|=1;
+//				}
+//				else if(i==11) {
+//					if(service.isDayBurner(device))
+//						newWorkState|=1;
+//				}
+//				else if(i==12) {
+//					if(service.isNightOutage(device))
+//						newWorkState|=1;
+//				}
+//				
+//			}
+//			else {
+//				//System.out.println("Fault 1 i "+i);
+//				if(i==0) {
+//					if(service.isDeviceTempNormal(device)) 	{	
+//						newWorkState&=~1;
+//					}
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==1) {
+//					if(!service.isBatteryOverCurrent(device)) {
+//						newWorkState&=~1;
+//					}else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==2) {
+////					if(!service.isBatteryOverDischarge(device))
+//					if(!service.isBatteryOverDischargeVoltage(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==3) {
+//					if(!service.isBatteryOverVoltage(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==4) {
+//					if(!service.isBatteryOverDischargeVoltage(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==9) {
+//					if(!service.isPanelUnderVoltage(device)) 
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==10) {
+//					if(!service.isPanelOverVoltage(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==11) {
+//					if(!service.isDayBurner(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				else if(i==12) {
+//					if(!service.isNightOutage(device))
+//						newWorkState&=~1;
+//					else {
+//						newWorkState|=1;
+//					}
+//				}
+//				
+//			}
+//			if(i!=0)
+//			newWorkState<<=1;
+//			//System.out.println("New Work State:"+newWorkState);
+//		}
+//		if(newWorkState!=workState) {
+//			System.out.println("New Work State "+newWorkState);
+//			System.out.println("Work State "+workState);
+//			Vendor vendor = threadBosun.get();
+//			service.setWorkState(device,newWorkState);
+//			vendor.publishWorkState(device,2,newWorkState);
+//			
+//		}
+//		
+//	}
+	
+	public void compareWorkState(String device,int newWorkState, int workState) {
 		if(newWorkState!=workState) {
 			System.out.println("New Work State "+newWorkState);
 			System.out.println("Work State "+workState);
@@ -223,8 +239,11 @@ public class AutomateDatas {
 			vendor.publishWorkState(device,2,newWorkState);
 			
 		}
-		
 	}
+	
+	 public Service getService() {
+	        return service;
+	    }
 	
 	private void updateLoad(String device) {
 		
@@ -240,22 +259,22 @@ public class AutomateDatas {
 //				sunRise=calc.getSunRise(x, y, 1);
 //			else if(now.isBefore(sunRise))
 //				sunSet=calc.getSunRise(x, y, -1);
-			int loadOrChange=service.getLOADORCHANGE(device);
 			if(service.getManualTime(device)<=0) {
 				if(now.isAfter(sunSet)&&now.isBefore(sunRise)) {
 					service.clearDayBurner(device);
 					
-					if(loadOrChange==1&&service.getBatU100mv(device)>=batteryRechargeVoltage2) {
-						service.setLOADORCHANGE(device,0);
-						loadOrChange=0;
-					}
+//					if(loadOrChange==1&&service.getBatU100mv(device)>=batteryRechargeVoltage2) {
+//						service.setLOADORCHANGE(device,0);
+//						loadOrChange=0;
+//					}
 					//scheduleLogic
-					if(loadOrChange==1) {
+					if(service.getCannotUpdate(device)==2) {
 						service.setLedLevel(device, 0);
 					}else {
 					
 							int time=service.getTimePeriod(device);
 							if(time==0) {
+								service.setLOADORCHANGE(device, 0);
 								time=1;
 							}
 							long elapsedTime = Duration.between(sunSet,now).toMillis();
@@ -286,8 +305,12 @@ public class AutomateDatas {
 				
 			}
 			else {
-				if(loadOrChange==0) {
+				if(service.getCannotUpdate(device)!=2) {
 					service.setLedLevel(device, service.getManualPower(device));
+					service.updateManualTime(device,AutomateDatas.duration);
+				}
+				else {
+					service.setLedLevel(device, 0);
 					service.updateManualTime(device,AutomateDatas.duration);
 				}
 			}
@@ -310,12 +333,12 @@ public class AutomateDatas {
 		System.out.println("Now:"+now);
 		System.out.println("sunRise:"+sunRise);
 		System.out.println("sunSet:"+sunSet);
-		if(now.isAfter(sunSet)||now.isBefore(sunRise)) {
+		if(now.isAfter(sunSet)&&now.isBefore(sunRise)) {
 			System.out.println("Night");
 			service.setPanel(device,0,0,0,0);
 		}
 		else {
-			if(service.getLOADORCHANGE(device)==1) {
+			if(service.getLOADORCHANGE(device)==1&&service.getCannotUpdate(device)!=1) {
 				double temp=service.getPanelTemp(device);
 				double panelEfficiency=(100-((temp-25)*0.4))/100;
 				double maxPower=panelPowerLocal;
@@ -380,7 +403,7 @@ public class AutomateDatas {
 
 	    double IDEAL_TEMP = 25.0;
 	    double BASE_VOLTAGE = panelVoltage;     
-	    double TEMP_COEFF = -0.003;     
+	    double TEMP_COEFF = -0.3;     
 	    double tempDifference = temperature - IDEAL_TEMP;
 	    double tempEffect = BASE_VOLTAGE * TEMP_COEFF * tempDifference;
 
@@ -399,7 +422,7 @@ public class AutomateDatas {
 	}
 	private void updateBattery(String device) {
 		
-		
+		System.out.println("BatteryPercentage:"+service.getBatCapSoc(device));
 		ZonedDateTime now=ZonedDateTime.now(ZoneId.of(region));
 //		SunRiseSunSetCalc calc=new SunRiseSunSetCalc();
 //		double x=service.getLatitude(device);
@@ -407,13 +430,18 @@ public class AutomateDatas {
 		
 		ZonedDateTime sunRise=service.getSunRise(device);
 		ZonedDateTime sunSet=service.getSunSet(device);
-		if (service.getLOADORCHANGE(device) == 0) {
+//		if (service.getLOADORCHANGE(device) == 0) {
+		if(service.getCannotUpdate(device)!=2) {
 			//DischargingState
 			if(now.isBefore(sunSet)&&now.isAfter(sunRise)) {
-				if(service.getTimePeriod(device)==0&&service.getManualTime(device)==0)
+				if(service.getManualTime(device)<=0) {
+					service.setLOADORCHANGE(device, 1);
 					service.dishargeWithoutConnection(device);
-				if(service.getManualTime(device)>0)
+				}
+				if(service.getManualTime(device)>0) {
+					service.setLOADORCHANGE(device, 0);
 					service.dishargeWithConnection(device);
+				}
 				
 				
 			}
@@ -422,12 +450,12 @@ public class AutomateDatas {
 				service.updateMinimumBatteryVoltageDuringNight(device);
 			}
 			
+			
+		} 
+		if(service.getLOADORCHANGE(device)==0) {
 			service.updateDailyDischargingPower(device);
 			service.updateDailyDischargingCurrent(device);
-			
-		} else {
-			//ChargingState
-			//Login in Update Panel
+		}if(service.getLOADORCHANGE(device)==1) {
 			service.updateDailyChargingPower(device);
 			service.updateDailyChargingCurrent(device);
 		}
