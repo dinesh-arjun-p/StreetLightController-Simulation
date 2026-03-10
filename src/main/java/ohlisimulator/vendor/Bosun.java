@@ -10,7 +10,6 @@ import org.json.JSONObject;
 import ohlisimulator.controller.RequestProcessor;
 import ohlisimulator.random.Location;
 import ohlisimulator.serverside.MqttMessageListener;
-import ohlisimulator.vendor.ServiceBosunRegisters.ServiceBosunFieldName;
 
 public class Bosun extends Vendor {
 
@@ -29,6 +28,17 @@ public class Bosun extends Vendor {
 		LOAD_WORK_TIME_TOTAL_H16("0125"), LOAD_WORK_TIME_TOTAL_L16("0126"), YOUREN_TIME_IN_DAY("0127"),
 		WUREN_TIME_IN_DAY("0128"), LIGHT_INDEX("0129"), POWER_INDEX("012A"), SYS_INDEX("012B"), DAY_LENGHT_1S("012C"),
 		NIGHT_LENGHT_1S("012D"),
+		
+		SYSTEM_VOLTAGE("E003"),
+		BAT_OVER_VOLT("E005"),
+		BAT_RECHARGE_U_100MV("E009"),
+		BAT_OVER_DISCHARGE_BACK_U("E00B"),
+		BAT_OVER_DISCH_U("E00D"),
+		
+		
+		
+		TEST_POWER_COMMAND("DF0A"),
+		TEST_TIME_COMMAND("DF0B"),
 		
 		 LED_I_SET_10MA("E08D"),
 		    LED_POWER_SAVING_MODE("E08E"),
@@ -52,6 +62,10 @@ public class Bosun extends Vendor {
 			LED_SENSOR_ON_P9("E0AB"),
 			LED_MORNING_TIME_1S("E0AD"),
 			LED_MORNING_SENSOR_ON_P("E0AE"),
+			
+			
+			
+			DATA_SCHEDULER("ABCD"),
 			;
 
 		private final String address;
@@ -77,6 +91,19 @@ public class Bosun extends Vendor {
 		YOUREN_TIME_IN_DAY(1), WUREN_TIME_IN_DAY(1), LIGHT_INDEX(1), POWER_INDEX(1), SYS_INDEX(1), DAY_LENGHT_1S(1),
 		NIGHT_LENGHT_1S(1),
 		
+		SYSTEM_VOLTAGE(1),
+		BAT_OVER_VOLT(10),
+		BAT_RECHARGE_U_100MV(10),
+		BAT_OVER_DISCHARGE_BACK_U(10),
+		BAT_OVER_DISCH_U(10),
+		
+		
+		
+		TEST_POWER_COMMAND(1),
+		TEST_TIME_COMMAND(1),
+		
+		
+		
 		LED_I_SET_10MA(10),
 	    LED_POWER_SAVING_MODE(1),
 	    LED_TIME1_1S(1),
@@ -99,6 +126,9 @@ public class Bosun extends Vendor {
 		LED_SENSOR_ON_P9(1),
 		LED_MORNING_TIME_1S(1),
 		LED_MORNING_SENSOR_ON_P(1),
+		
+		
+		DATA_SCHEDULER(1),
 		;
 
 		private final double address;
@@ -219,7 +249,7 @@ public class Bosun extends Vendor {
 		boolean crcCheck = true;
 		String receiveD = msg.getString("D");
 		String crc = receiveD.substring(receiveD.length() - 4);
-		if (crc == getCrcCheck(new StringBuffer(receiveD.substring(0,receiveD.length() - 4)))) {
+		if (crc.equals(getCrcCheck(new StringBuffer(receiveD.substring(0,receiveD.length() - 4))))) {
 			System.out.println("crcTrue");
 		}else {
 			System.out.println("crcFalse");
@@ -228,6 +258,7 @@ public class Bosun extends Vendor {
 		if (crcCheck) {
 			int type=getType(receiveD);
 			if (type==9) {
+				System.out.println("Received:09");
 				publishMultipleRequestedData(deviceId, receiveD);
 			}
 			if (type==10||type==6) {
@@ -265,6 +296,7 @@ public class Bosun extends Vendor {
 	}
 	
 	private void writeData(String deviceId, String receiveD,int type) {
+		System.out.println("Writing Data");
 		String startingRegister = receiveD.substring(4, 8);
 		String lenHex = receiveD.substring(8, 12);
 		int len=1;
@@ -280,11 +312,23 @@ public class Bosun extends Vendor {
 			String field=ServiceBosunRegisters.vendorToField.get(BosunField);
 			String valueInString=receiveD.substring(pointer,pointer+4);
 			int value=Integer.parseInt(valueInString,16);
-			double scaled=value/Multiplier.valueOf(field).getAddress();
-			Object finalValue = ServiceBosunRegisters.convertToDbType(
+			double scaled=0;
+			try {
+				scaled=value/Multiplier.valueOf(BosunField).getAddress();
+			}
+			catch(Exception e ) {
+				scaled=0;
+				System.out.println("Error at writeData Bosun");
+			}
+			Object finalValue;
+			try {
+				finalValue= ServiceBosunRegisters.convertToDbType(
 			        scaled,
 			        ServiceBosunRegisters.ServiceBosunFieldName.valueOf(BosunField).getDataType()
-			);
+			);}
+			catch(Exception e) {
+				finalValue=0;
+			}
 			System.out.println("Field:"+finalValue);
 			//Checking Purpose its wrong
 			if(i>=57490 && i<=57519)
@@ -336,6 +380,22 @@ public class Bosun extends Vendor {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void publishWorkState(String deviceId, int i, int newWorkState) {
+		StringBuffer d=new StringBuffer("0106");
+		d.append(fieldToRegister.get("WORK_STATE"));
+		d.append(String.format("%04X", newWorkState));
+		d.append(getCrcCheck(d));
+		String D=d.toString();
+		JSONObject device = genericResponse(D);
+		
+		try {
+			listener.publishMessage(device, deviceId);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 	}
 
 	private String getCrcCheck(StringBuffer d) {
@@ -427,5 +487,7 @@ public class Bosun extends Vendor {
 		device.put("D", D);
 		return device;
 	}
+
+	
 
 }

@@ -64,38 +64,54 @@ public class ServiceBosunRegisters {
 			    DAY_LENGHT_1S("dayLengthIs", DataType.INT),
 			    NIGHT_LENGHT_1S("nightLengthIs", DataType.INT),
 
-			    LED_CURRENT("ledFullCurrentValue", DataType.DOUBLE),
+			    SYSTEM_VOLTAGE("systemVoltage",DataType.INT),
+			    BAT_OVER_VOLT("batteryOverChargeVoltage",DataType.INT),
+			    
+			    
+			    
+			    TEST_POWER_COMMAND("manualModePower",DataType.INT), 
+			    TEST_TIME_COMMAND("manualModeTime",DataType.LONG),
+			    
+			    LED_I_SET_10MA("ledFullCurrentValue", DataType.DOUBLE),
 			    LED_POWER_SAVING_MODE("ledPowerSavingMode", DataType.INT),
 
-			    LED_TIME1("timePeriod1", DataType.INT),
-			    LED_LEVEL1("ledLevel1", DataType.INT),
+			    LED_TIME1_1S("timePeriod1", DataType.INT),
+			    LED_SENSOR_ON_P1("ledLevel1", DataType.INT),
 
-			    LED_TIME2("timePeriod2", DataType.INT),
-			    LED_LEVEL2("ledLevel2", DataType.INT),
+			    LED_TIME2_1S("timePeriod2", DataType.INT),
+			    LED_SENSOR_ON_P2("ledLevel2", DataType.INT),
 
-			    LED_TIME3("timePeriod3", DataType.INT),
-			    LED_LEVEL3("ledLevel3", DataType.INT),
+			    LED_TIME3_1S("timePeriod3", DataType.INT),
+			    LED_SENSOR_ON_P3("ledLevel3", DataType.INT),
 
-			    LED_TIME4("timePeriod4", DataType.INT),
-			    LED_LEVEL4("ledLevel4", DataType.INT),
+			    LED_TIME4_1S("timePeriod4", DataType.INT),
+			    LED_SENSOR_ON_P4("ledLevel4", DataType.INT),
 
-			    LED_TIME5("timePeriod5", DataType.INT),
-			    LED_LEVEL5("ledLevel5", DataType.INT),
+			    LED_TIME5_1S("timePeriod5", DataType.INT),
+			    LED_SENSOR_ON_P5("ledLevel5", DataType.INT),
 
-			    LED_TIME6("timePeriod6", DataType.INT),
-			    LED_LEVEL6("ledLevel6", DataType.INT),
+			    LED_TIME6_1S("timePeriod6", DataType.INT),
+			    LED_SENSOR_ON_P6("ledLevel6", DataType.INT),
 
-			    LED_TIME7("timePeriod7", DataType.INT),
-			    LED_LEVEL7("ledLevel7", DataType.INT),
+			    LED_TIME7_1S("timePeriod7", DataType.INT),
+			    LED_SENSOR_ON_P7("ledLevel7", DataType.INT),
 
-			    LED_TIME8("timePeriod8", DataType.INT),
-			    LED_LEVEL8("ledLevel8", DataType.INT),
+			    LED_TIME8_1S("timePeriod8", DataType.INT),
+			    LED_SENSOR_ON_P8("ledLevel8", DataType.INT),
 
-			    LED_TIME9("timePeriod9", DataType.INT),
-			    LED_LEVEL9("ledLevel9", DataType.INT),
+			    LED_TIME9_1S("timePeriod9", DataType.INT),
+			    LED_SENSOR_ON_P9("ledLevel9", DataType.INT),
 
-			    LED_TIME10("timePeriod10", DataType.INT),
-			    LED_LEVEL10("ledLevel10", DataType.INT);
+			    LED_MORNING_TIME_1S("timePeriod10", DataType.INT),
+			    LED_MORNING_SENSOR_ON_P("ledLevel10", DataType.INT),
+			
+			
+			DATA_SCHEDULER("dataScheduler",DataType.LONG),
+			
+			
+			
+			
+			;
 
 			private final String field;
 			private final DataType dataType;

@@ -31,25 +31,30 @@ public class DragonFlyServiceRegisters {
 	    panelCurrent("PV_I_10MA",DataType.DOUBLE),
 	    panelPower("CHARGE_POWER_1W",DataType.DOUBLE),
 	    minBatVolDuringNight("MIN_BAT_U_IN_DAY_100MV",DataType.DOUBLE),
-	    MaxBatVolDuringDay("MAX_BAT_U_IN_DAY_100MV",DataType.DOUBLE),
-	    MaxChargingBatteryCurrentInDay("MAX_CHARGE_BAT_I_IN_DAY_10MA",DataType.DOUBLE),
-	    MaxDischargingBatteryCurrentInDay("MAX_DISCHARGE_BAT_I_IN_DAY_10MA",DataType.DOUBLE),
-	    MaxChargingBatteryPowerInDay("MAX_CHARGE_POWER_IN_DAY_1W",DataType.DOUBLE),
-	    MaxDischargingBatteryPowerInDay("MAX_DISCHARGE_POWER_IN_DAY_1W",DataType.DOUBLE),
+	    maxBatVolDuringDay("MAX_BAT_U_IN_DAY_100MV",DataType.DOUBLE),
+	    maxChargingBatteryCurrentInDay("MAX_CHARGE_BAT_I_IN_DAY_10MA",DataType.DOUBLE),
+	    maxDischargingBatteryCurrentInDay("MAX_DISCHARGE_BAT_I_IN_DAY_10MA",DataType.DOUBLE),
+	    maxChargingBatteryPowerInDay("MAX_CHARGE_POWER_IN_DAY_1W",DataType.DOUBLE),
+	    maxDischargingBatteryPowerInDay("MAX_DISCHARGE_POWER_IN_DAY_1W",DataType.DOUBLE),
 	    DailyChargingWh("CHARGE_WH_IN_DAY",DataType.DOUBLE),
 	    DailyDischargingWh("DISCHARGE_WH_IN_DAY",DataType.DOUBLE),
-	    DaysTotal("DAYS_TOTAL",DataType.INT),
-	    BatOverDischargeTimes("BAT_OVER_DISC_TIMES",DataType.INT),
-	    BatOverChargeTimes("BAT_OVER_CHARGE_TIMES",DataType.INT),
+	    daysTotal("DAYS_TOTAL",DataType.INT),
+	    batOverDischargeTimes("BAT_OVER_DISC_TIMES",DataType.INT),
+	    batOverChargeTimes("BAT_OVER_CHARGE_TIMES",DataType.INT),
 	    HistoricalCumulativeChargingAh("CHARGE_AH_TOTAL",DataType.DOUBLE),
 	    HistoricalCumulativeDischargingAh("DISCHARGE_AH_TOTAL",DataType.DOUBLE),
 	    HistoricalCumulativeChargingWh("CHARGE_WH_TOTAL",DataType.DOUBLE),
 	    HistoricalCumulativeDischargingWh("DISCHARGE_WH_TOTAL",DataType.DOUBLE),
-	    WorkState("WORK_STATE",DataType.INT),
-	    DayLengthIs("DAY_LENGHT_1S",DataType.INT),
-	    NightLengthIs("NIGHT_LENGHT_1S",DataType.INT),
+	    workState("WORK_STATE",DataType.INT),
+	    dayLengthIs("DAY_LENGHT_1S",DataType.INT),
+	    nightLengthIs("NIGHT_LENGHT_1S",DataType.INT),
 		panelTemp("PANEL_TEMP",DataType.DOUBLE),
 		
+		systemVoltage("SYSTEM_VOLTAGE",DataType.INT),
+		
+		
+		manualModePower("MANUAL_MODE_POWER",DataType.INT),
+		manualModeTime("MANUAL_MODE_TIME",DataType.LONG),
 		
 		ledFullCurrentValue("LED_CURRENT",DataType.DOUBLE),
 		ledPowerSavingMode("LED_POWER_SAVING_MODE",DataType.INT),
@@ -75,6 +80,8 @@ public class DragonFlyServiceRegisters {
 		ledLevel10("LED_LEVEL10",DataType.INT),
 		
 			
+		
+		dataScheduler("DATA_SCHEDULER",DataType.LONG),
 		
 		
 		;
@@ -106,25 +113,25 @@ public class DragonFlyServiceRegisters {
 
 	}
 	
-	public Object convert(String value, DataType type) {
+	public static Object convertToDbType(double value, DataType type) {
 
-	    switch (type) {
-	        case INT:
-	            return Integer.parseInt(value);
+		switch (type) {
 
-	        case LONG:
-	            return Long.parseLong(value);
+        case INT:
+            return (int) value;
 
-	        case DOUBLE:
-	            return Double.parseDouble(value);
+        case LONG:
+            return (long)value;
 
-	        case BOOLEAN:
-	            return Boolean.parseBoolean(value);
+        case DOUBLE:
+            return value;
 
-	        default:
-	            return value;
-	    }
+        case BOOLEAN:
+            return value > 0;
+
+        default:
+            return value;
+		}
 	}
-	
 	
 }

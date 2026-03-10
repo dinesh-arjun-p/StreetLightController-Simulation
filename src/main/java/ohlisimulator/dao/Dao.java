@@ -1,5 +1,6 @@
 package ohlisimulator.dao;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +20,7 @@ public abstract class Dao {
 	public abstract double getCreatedTime(String device);
 	public abstract void nextRetry(String device, long long1);
 	public abstract double getFieldValue(String device, String field);
-	public abstract List<String> getDiscoveryDeviceFilter(long duration);
+	//public abstract List<String> getDiscoveryDeviceFilter(long duration);
 	public abstract int getLOADORCHANGE(String device);
 	public abstract void markAllDiscovered();
 	public abstract long getBatCurEnergy(String device);
@@ -72,5 +73,30 @@ public abstract class Dao {
 	public abstract double getLedU100mv(String device);
 	public abstract double getLedPowerIn(String device);
 	public abstract void setUpdateField(String deviceId, String field, String value);
-	public abstract void addTimePeriodSchedule(String deviceId, int i, int value);
+	public abstract void addTimePeriodSchedule(String deviceId, int i, int value, double x, double y);
+	public abstract void addCurrentForTimePeriod(String deviceId, int i, int value);
+	public abstract void addCurrent2ForTimePeriod(String deviceId, int i, int value);
+	public abstract int getBatteryVoltage(String device);
+	public abstract int getTimePeriod(String device);
+	public abstract void setTimePeriod(String device, int val);
+	public abstract long getScheduleDuration(String device, int time);
+	public abstract int getLedLevel(String device);
+	public abstract int getScheduleCurrent(String device, int time);
+	public abstract double getPanelOverVoltage(String device);
+	public abstract double getPanelUnderVoltage(String device);
+	public abstract double getDeviceTemp(String device);
+	public abstract double getOverTemp(String device);
+	public abstract double getBatOverVoltage(String device);
+	public abstract double getBatUnderVoltage(String device);
+	public abstract double getBatOverCurrent(String device);
+	public abstract List<String> getDiscoveryDeviceFilter(long now);
+	public abstract long getManualTime(String device);
+	public abstract int getManualPower(String device);
+	public abstract void setManualTime(String device, long l);
+	public abstract double getPvU100mv(String device);
+	public abstract int getWorkState(String device);
+	public abstract void setWorkState(String device, int workState);
+	public abstract ZonedDateTime getSunRise(String device);
+	public abstract ZonedDateTime getSunSet(String device);
+	public abstract void setDeviceTemp(String device, double temp);
 }

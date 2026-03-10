@@ -10,4 +10,5 @@ public abstract class Vendor {
 	public abstract void messageArrived(String topic, MqttMessage msg);
 	public abstract void publishControllerInfo(String topic,String cmd,String...info) ;
 	public abstract void publishRealTimeMetrics(String deviceId) ;
+	public abstract void publishWorkState(String topic, int i, int newWorkState);
 }

@@ -30,10 +30,10 @@ public class DataScheduler {
 		
 		// ONE worker pool (change to 2 if needed)
 
-		int automateDuration=5;
+		int automateDuration=8;
+		AutomateDatas automateDatas = new AutomateDatas(automateDuration);
 		scheduler.scheduleAtFixedRate(() -> {
 
-			AutomateDatas automateDatas = new AutomateDatas(automateDuration);
 			automateDatas.start();
 			System.out.println("AutoMateDatas Started");
 
@@ -68,8 +68,8 @@ public class DataScheduler {
 		
 		
 		scheduler.scheduleAtFixedRate(() -> {
-
-			List<String> discoveredDevices = service.getDiscoveryDeviceFilter(dataDuration);
+			long now=System.currentTimeMillis();
+			List<String> discoveredDevices = service.getDiscoveryDeviceFilter(now);
 			if(discoveredDevices.size()>0) {
 				workerPool2 = Executors.newFixedThreadPool(String.valueOf(discoveredDevices.size()).length());
 			for (String device : discoveredDevices) {
@@ -77,7 +77,7 @@ public class DataScheduler {
 			}
 			workerPool2.shutdown();
 			}
-		}, 0, 15, TimeUnit.SECONDS);
+		}, 0, 5, TimeUnit.SECONDS);
 		
 		
 
