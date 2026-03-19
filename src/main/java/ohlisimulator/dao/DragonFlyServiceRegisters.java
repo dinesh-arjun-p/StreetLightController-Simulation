@@ -63,8 +63,12 @@ public class DragonFlyServiceRegisters {
 		manualModePower("MANUAL_MODE_POWER",DataType.INT),
 		manualModeTime("MANUAL_MODE_TIME",DataType.LONG),
 		
+		LuxVoltage("LUX_VOLTAGE",DataType.DOUBLE),
+		
 		ledFullCurrentValue("LED_CURRENT",DataType.DOUBLE),
 		ledPowerSavingMode("LED_POWER_SAVING_MODE",DataType.INT),
+		ledControlDelayTime("LED_CONTROL_DELAY_TIME_1S",DataType.INT),
+		
 		timePeriod1("LED_TIME1",DataType.INT),
 		ledLevel1("LED_LEVEL1",DataType.INT),
 		timePeriod2("LED_TIME2",DataType.INT),

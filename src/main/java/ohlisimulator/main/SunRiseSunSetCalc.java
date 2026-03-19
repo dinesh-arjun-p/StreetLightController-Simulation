@@ -1,6 +1,7 @@
 package ohlisimulator.main;
 import org.shredzone.commons.suncalc.SunTimes;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -8,22 +9,19 @@ import java.time.ZonedDateTime;
 import java.util.Properties;
 
 public class SunRiseSunSetCalc {
-	String region;
-	private void loadConfig() {
+	static String region;
+	
+	static {
+	    try {
+	        Properties props = new Properties();
+	        InputStream input = new FileInputStream("config/config.properties");
 
-		try {
-			Properties props = new Properties();
-			InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
+	        props.load(input);
+	        region = props.getProperty("Region"+props.getProperty("region"));
 
-			props.load(input);
-			region=props.getProperty("Region");
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	{
-		loadConfig();
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
 	}
     public ZonedDateTime getSunSet(double x,double y,int day) {
     	LocalDate today = LocalDate.now();

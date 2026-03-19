@@ -1,4 +1,5 @@
 package ohlisimulator.main;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.Scanner;
@@ -21,22 +22,14 @@ public class Main {
          
         Properties props = new Properties();
 
-        InputStream input = Main.class
-                .getClassLoader()
-                .getResourceAsStream("config.properties");
+        InputStream input = new FileInputStream("config/config.properties");
 
         props.load(input);
         try {
         noOfDevices = parseInt(props.getProperty("noOfDevices"));
         deviceSerialNumberStart = parseInt(props.getProperty("deviceSerialNumberStart"));
         batteryVoltage = parseInt(props.getProperty("batteryVoltage"));
-	        if(batteryVoltage==12) {
-	        	batteryCapacity = parseInt(props.getProperty("BatteryAmpereHours1"))*3600*1000;
-	        	System.out.println("Battery Capacity from Main:"+batteryCapacity);
-	        }
-	        if(batteryVoltage==24) {
-	        	batteryCapacity = parseInt(props.getProperty("BatteryAmpereHours2"))*3600*1000;
-	        }
+	        
         }
         catch(Exception e) {
         	System.out.println("Give Integer Parameters in config.properties ");
@@ -45,7 +38,7 @@ public class Main {
         CreateDevice deviceGenerator1=new CreateDevice();
         while(true) {
 	        int success=deviceGenerator1.deviceGenerateThread(noOfDevices,deviceSerialNumberStart,
-	        		batteryCapacity,batteryVoltage);
+	        		batteryVoltage);
 	        if(success==0) {
 		        System.out.println("Check the connection:");
 		        System.out.println("If Checked Press y");

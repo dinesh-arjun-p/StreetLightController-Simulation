@@ -8,6 +8,7 @@ import java.security.cert.X509Certificate;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -46,8 +47,56 @@ public class MqttMessageListener {
 		return listener;
 	}
 	
-	int cores = Runtime.getRuntime().availableProcessors();
-	ForkJoinPool pool=new ForkJoinPool(cores+4);	
+	
+	static int noOfDevices;
+	static int cores= Runtime.getRuntime().availableProcessors();
+	ForkJoinPool pool;
+//	 {
+//		try {
+//			Properties props = new Properties();
+//			InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
+//
+//			props.load(input);
+//			noOfDevices=Integer.parseInt(props.getProperty("noOfDevices"));
+//			
+//			poolIntializer();
+//		}
+//		catch(Exception e) {
+//			e.printStackTrace();
+//			System.exit(0);
+//		}
+//	}
+	 
+	 public MqttMessageListener() {
+		    try {
+		        Properties props = new Properties();
+		        InputStream input = new FileInputStream("config/config.properties");
+
+		        if (input == null) {
+		            throw new RuntimeException("config.properties not found");
+		        }
+
+		        props.load(input);
+
+		        noOfDevices = Integer.parseInt(props.getProperty("noOfDevices"));
+		        cores = Runtime.getRuntime().availableProcessors();
+
+		        poolIntializer();
+
+		        
+
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		        System.exit(0);
+		    }
+		}
+	
+	
+	public void poolIntializer() {
+//	    pool = new ForkJoinPool(String.valueOf(noOfDevices).length() * 2);
+		pool = new ForkJoinPool(Math.min(cores*2,(int)Math.ceil(noOfDevices/1250.0)*1));
+	}
+	
 	ThreadLocal<Bosun> threadBosun =
 	        ThreadLocal.withInitial(() -> new Bosun());
 	boolean connected=false;
@@ -70,15 +119,13 @@ public class MqttMessageListener {
         String ssl;
 		
         Properties props = new Properties();
-		InputStream input = MqttMessageListener.class
-                .getClassLoader()
-                .getResourceAsStream("config.properties");
+		InputStream input = new FileInputStream("config/config.properties");
 		try {
 			props.load(input);
-        	broker = props.getProperty("broker3");
+        	broker = props.getProperty("broker");
         	clientId = props.getProperty("clientId");
-        	username = props.getProperty("username");
-        	password = props.getProperty("password");
+        	username = props.getProperty("username1");
+        	password = props.getProperty("password1");
         	topic = props.getProperty("topic");
         	ssl=props.getProperty("ssl");
         }
@@ -131,9 +178,11 @@ public class MqttMessageListener {
             	String message =new String(msg.getPayload());
 
             	System.out.println("Message Arrived:"+message);
+            	
             	pool.execute(() -> {
             		System.out.println("Executing");
             	    Vendor vendor = threadBosun.get();
+            	   
             	    MessageTask msgTask =new MessageTask(vendor, topic, msg);
             	    msgTask.process();
             	});
@@ -216,6 +265,8 @@ public class MqttMessageListener {
 	}
 	
 	public boolean closeClient() throws Exception{
+		pool.shutdown();
+		
 		 if (client != null && client.isConnected()) {
 
 		        IMqttToken token = client.disconnect();

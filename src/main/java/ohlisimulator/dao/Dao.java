@@ -7,7 +7,7 @@ import java.util.Map;
 import redis.clients.jedis.resps.Tuple;
 
 public abstract class Dao {
-	public abstract boolean registerDevice(String SerialNumber,String x,String y,long time,List<Long>duration, long batteryCapacity, int batteryVoltage);
+	public abstract boolean registerDevice(String SerialNumber,String x,String y,long time,List<Long>duration,  int batteryVoltage);
 	public abstract void markDiscovered(String deviceId) ;
 	public abstract String getLatitude(String topic);
 	public abstract String getLongitude(String topic);
@@ -18,7 +18,7 @@ public abstract class Dao {
 	public abstract List<Tuple> getAllRetryDevices();
 	public abstract List<String> getAllDevices();
 	public abstract double getCreatedTime(String device);
-	public abstract void nextRetry(String device, long long1);
+	public abstract void nextRetry(String device, long long1,long now);
 	public abstract double getFieldValue(String device, String field);
 	//public abstract List<String> getDiscoveryDeviceFilter(long duration);
 	public abstract int getLOADORCHANGE(String device);
@@ -105,4 +105,5 @@ public abstract class Dao {
 	public abstract double getBatEmptyChargeVoltage(String device);
 	public abstract double getBatFullChargeVoltage(String device);
 	public abstract int getBatCapSoc(String device);
+	public abstract DeviceConfig setBatteryVoltage(String device, int i);
 }

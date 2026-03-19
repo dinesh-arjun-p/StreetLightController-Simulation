@@ -77,9 +77,13 @@ public class ServiceBosunRegisters {
 			    TEST_POWER_COMMAND("manualModePower",DataType.INT), 
 			    TEST_TIME_COMMAND("manualModeTime",DataType.LONG),
 			    
+			    
+			    LIGHT_CONTROL_U_1V("LuxVoltage",DataType.DOUBLE),
+			    
 			    LED_I_SET_10MA("ledFullCurrentValue", DataType.DOUBLE),
 			    LED_POWER_SAVING_MODE("ledPowerSavingMode", DataType.INT),
-
+			    LED_CONTROL_DELAY_TIME_1S("ledControlDelayTime",DataType.INT),
+			    
 			    LED_TIME1_1S("timePeriod1", DataType.INT),
 			    LED_SENSOR_ON_P1("ledLevel1", DataType.INT),
 

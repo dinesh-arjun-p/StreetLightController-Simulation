@@ -1,5 +1,6 @@
 package ohlisimulator.service;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import java.util.Random;
 import org.json.JSONObject;
 
 import ohlisimulator.controller.AutomateDatas;
+import ohlisimulator.controller.DataScheduler;
 import ohlisimulator.controller.RequestProcessor;
 import ohlisimulator.dao.Dao;
 import ohlisimulator.dao.DragonFly;
@@ -23,8 +25,9 @@ public class Service {
 	Properties props;
 	private void loadConfig(){
 		 props= new Properties();
-		InputStream input = Service.class.getClassLoader().getResourceAsStream("config.properties");
+		
 		try {
+			InputStream input = new FileInputStream("config/config.properties");
 			props.load(input);
 			duration.add(Long.parseLong(props.getProperty("probeRetryDuration1")));
 			duration.add(Long.parseLong(props.getProperty("probeRetryDuration2")));
@@ -60,22 +63,24 @@ public class Service {
 
 	Dao dao = new DragonFly();
 
-	public boolean registerDevice(String SerialNumber, JSONObject device,long batteryCapacity, int batteryVoltage) {
+	public boolean registerDevice(String SerialNumber, JSONObject device, int batteryVoltage) {
 		loadConfig();
 		String X = device.getString("X");
 		String Y = device.getString("Y");
 		long time=System.currentTimeMillis();
-		return dao.registerDevice(SerialNumber, X, Y, time,duration,batteryCapacity, batteryVoltage);
+		return dao.registerDevice(SerialNumber, X, Y, time,duration, batteryVoltage);
 	}
 
 	public void registrationSuccess(String topic) {
 		System.out.println("From Service Layer Topic"+topic);
 		String[] parts = topic.split("/");
 		String deviceId = parts[1];
-		if(deviceId.equals("all"))
-			dao.markAllDiscovered();
-		else 
-			dao.markDiscovered(deviceId);
+//		synchronized(this) {
+			if(deviceId.equals("all"))
+				dao.markAllDiscovered();
+			else 
+				dao.markDiscovered(deviceId);
+//		}
 	}
 
 	public void getControllerInfo(String topic) {
@@ -109,7 +114,7 @@ public class Service {
 	    for(int i=0;i<time1.size();i++) {
 			if(age<=time1.get(i)) {
 				System.out.println("Coming Under Time:"+time1.get(i));
-				updateRetry(device,i);
+				updateRetry(device,i,now);
 				break;
 			}
 		}
@@ -117,10 +122,10 @@ public class Service {
 
 	}
 
-	private void updateRetry(String device, int i) {
+	private void updateRetry(String device, int i,long now) {
 		loadConfig();
 		System.out.println("Going to add Duration"+duration.get(i));
-		dao.nextRetry(device,duration.get(i));
+		dao.nextRetry(device,duration.get(i),now);
 	}
 
 	public double getFieldValue(String deviceId, String serviceField) {
@@ -143,30 +148,32 @@ public class Service {
 		return dao.getLOADORCHANGE(device);
 	}
 
-	public double dishargeWithoutConnection(String deviceId) {
-		Map<String,String> data=new HashMap<>();
+	public int dischargeWithoutConnection(String deviceId,int cannotUpdate,	Map<String,String> data) {
+//		Map<String,String> data=new HashMap<>();
 		String device="device/"+deviceId;
 		long batteryCurrentCapacity=dao.getBatCurEnergy(device);
 		Random random = new Random();
 		//In milliAmpere
 		int number = random.nextInt(50+1) + 30;
-		//Battery Current Capactity is stored in milli Amperes
+		//Battery Current Capactity is stored in milli Amperes	
 		batteryCurrentCapacity-=(number* AutomateDatas.duration);
 		System.out.println("Battery Current in dishargeWithoutConnection:"+number);
 		long batteryCapacity=dao.getBatCapEnergy(device);
 		//dao.setBatCurEnergy(device, batteryCurrentCapacity);
+		if(batteryCurrentCapacity<0)
+			batteryCurrentCapacity=0;
 		putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
-		updateBatVoltage(device,batteryCurrentCapacity,batteryCapacity);
+		int temp=updateBatVoltage(device,batteryCurrentCapacity,batteryCapacity,cannotUpdate,data);
 		
 		//dao.setBatI10ma(device,number/1000.0);
-		putValue(data,"batteryCurrent",number/1000.0);
-		System.out.println("Battery Current:"+number/1000.0);
-		dao.setUpdate(device, data);
-		return number;
+		putValue(data,"batteryCurrent",number/10000.0);
+		System.out.println("Battery Current:"+number/10000.0);
+//		dao.setUpdate(device, data);
+		return temp;
 	}
 	
-	public double dishargeWithConnection(String deviceId) {
-		Map<String,String> data=new HashMap<>();
+	public int dischargeWithConnection(String deviceId,int cannotUpdate,Map<String,String> data) {
+//		Map<String,String> data=new HashMap<>();
 		String device="device/"+deviceId;
 		double ledPower=dao.getLedPowerIn(device);
 		double batVoltage=dao.getBatU100mv(device);
@@ -177,25 +184,34 @@ public class Service {
 		//dao.setBatI10ma(device, batCurrent);
 		putValue(data, "batteryCurrent", batCurrent);
 		long batteryCurrentCapacity=dao.getBatCurEnergy(device);
+		long usedCurrent=(long)(batCurrent*1000* AutomateDatas.duration);
+		if(usedCurrent!=0) {
 		batteryCurrentCapacity-=(batCurrent*1000* AutomateDatas.duration);
+		System.out.println("Used Current:"+(batCurrent*1000* AutomateDatas.duration));
+			if(batteryCurrentCapacity<0)
+				batteryCurrentCapacity=0;
+			putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
+		}
 		long batteryCapacity=dao.getBatCapEnergy(device);
 		System.out.println("Battery Current Capacity:"+batteryCurrentCapacity);
 		System.out.println("Battery Total Capacity:"+batteryCapacity);
 		putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
-		updateBatVoltage(device,batteryCurrentCapacity,batteryCapacity);
-		dao.setUpdate(device, data);
-		return batCurrent;
+		int temp=updateBatVoltage(device,batteryCurrentCapacity,batteryCapacity,cannotUpdate,data);
+		if(temp==2) {
+			putValue(data, "batteryCurrent", 0);
+		}
+//		dao.setUpdate(device, data);
+		return temp;
 	}
 
-	public double updateBatVoltage(String device, long batteryCurrentCapacity, long batteryCapacity) {
-		Map<String,String> data=new HashMap<>();
-		double batteryVoltage=dao.getBatU100mv(device);
+	public int updateBatVoltage(String device, long batteryCurrentCapacity, long batteryCapacity,int cannotUpdate
+			,Map<String,String> data) {
+//		Map<String,String> data=new HashMap<>();
+		double batteryVoltage;
 		double batteryFullChargeVoltage=dao.getBatFullChargeVoltage(device);
 		double batteryEmptyChargeVoltage=dao.getBatEmptyChargeVoltage(device);
 		
-		System.out.println("Battery Voltage:"+batteryVoltage);
-		System.out.println("batteryFullChargeVoltage:"+batteryFullChargeVoltage);
-		System.out.println("batteryEmptyChargeVoltage:"+batteryEmptyChargeVoltage);
+	
 		double batVoltage=batteryEmptyChargeVoltage+
 				((batteryCurrentCapacity/(double)batteryCapacity)*
 				(batteryFullChargeVoltage-batteryEmptyChargeVoltage));
@@ -203,18 +219,18 @@ public class Service {
 //		dao.setBatU100mv(device,batVoltage);
 		putValue(data,"batteryVoltage",batVoltage);
 		
-		updateCannotChange(device, data, batVoltage);
+		cannotUpdate=updateCannotChange(device, data, batVoltage,cannotUpdate);
 //		dao.setBatCapSoc(device, (int)(((double)batteryCurrentCapacity/batteryCapacity)*100));
 		putValue(data,"batteryPercentage",(int)(((double)batteryCurrentCapacity/batteryCapacity)*100));
 		System.out.println("Device from updateBatVol:"+device);
-		dao.setUpdate(device, data);
-		return batVoltage;
+//		dao.setUpdate(device, data);
+		return cannotUpdate;
 	}
 
 
 
 
-	void updateCannotChange(String device, Map<String, String> data, double batVoltage) {
+	int updateCannotChange(String device, Map<String, String> data, double batVoltage,int cannotUpdate) {
 		double batteryOverChargeVoltage;
 		double batteryOverChargeReturnVoltage;
 		double batteryOverDischargeVoltage;
@@ -226,18 +242,26 @@ public class Service {
 		if(batVoltage<=batteryOverDischargeVoltage) {
 			System.out.println("Changing Cannot Update to 2");
 			//dao.setLoadOrChange(device,1);
+			if(cannotUpdate!=2) {
 			putValue(data,"cannotUpdate",2);
+			}
+			return 2;
 		}
 		if(batVoltage>=batteryOverChargeVoltage) {
 			System.out.println("Changing Cannot Update to 1");
 //			dao.setLoadOrChange(device,0);
+			if(cannotUpdate!=1)
 			putValue(data,"cannotUpdate",1);
+			return 1;
 		}
-		if(batVoltage<=batteryOverChargeReturnVoltage&&batVoltage>=batteryOverDischargeReturnVoltage){
+		if(batVoltage<batteryOverChargeReturnVoltage&&batVoltage>batteryOverDischargeReturnVoltage){
 			System.out.println("Changing Cannot Update to 0");
 //			dao.setLoadOrChange(device,0);
+			if(cannotUpdate!=0)
 			putValue(data,"cannotUpdate",0);
+			return 0;
 		}
+		return cannotUpdate;
 	}
 	
 
@@ -251,35 +275,34 @@ public class Service {
 		return Double.parseDouble(dao.getLatitude(device));
 	}
 
-	public void setPanel(String deviceId,double panelVoltage, double panelCurrent, double panelPower,int day) {
+	public void setPanel(String deviceId,double panelVoltage, double panelCurrent, double panelPower,int loadOrChange,Map<String,String> data) {
 		String device="device/"+deviceId;
-		Map<String,String> data=new HashMap<>();
+//		Map<String,String> data=new HashMap<>();
 		putValue(data,"panelVoltage",panelVoltage);
 //		dao.setPvU100mv(device,panelVoltage);
 		putValue(data,"panelCurrent",panelCurrent);
 //		dao.setPvI10ma(device,panelCurrent);
 		putValue(data,"panelPower",panelPower);
 //		dao.setChargePower1w(device,panelPower);
-		double temp=generatePanelTemp(device,day);
+		double temp=generatePanelTemp(device,loadOrChange);
 		putValue(data,"panelTemp",temp);
-		dao.setUpdate(device, data);
-		generatePanelTemp(device,day);
+//		dao.setUpdate(device, data);
 		
 	}
 
-	private double generatePanelTemp(String device,int day) {
+	private double generatePanelTemp(String device,int loadOrChange) {
 		double temp=dao.getPanelTemp(device);
-		if(day==0) {
-			if(temp>25)
-				return temp-0.1;
-			else
+		if(loadOrChange==0) {
+			if(temp>=20)
 				return temp-0.01;
+			else
+				return temp-0.001;
 		}
 		else {
-			if(temp<30)
-				return temp+0.1;
-			else
+			if(temp<=30)
 				return temp+0.01;
+			else
+				return temp+0.001;
 		}
 	}
 
@@ -417,12 +440,14 @@ public class Service {
 		dao.setNightLengthIs(device,seconds);
 	}
 
-	public void setSunRise(String device, ZonedDateTime sunRise) {
+	public void setSunRise(String deviceId, ZonedDateTime sunRise) {
+		String device="device/"+deviceId;
 		dao.setSunRise(device,sunRise.toString());
 		
 	}
 
-	public void setSunSet(String device, ZonedDateTime sunSet) {
+	public void setSunSet(String deviceId, ZonedDateTime sunSet) {
+		String device="device/"+deviceId;
 		dao.setSunSet(device,sunSet.toString());
 	}
 	
@@ -436,9 +461,9 @@ public class Service {
 		return dao.getBatCapEnergy(device);
 	}
 
-	public void chargeFromPanel(String deviceId, double panelPowerLocal) {
+	public void chargeFromPanel(String deviceId, double panelPowerLocal,Map<String,String> data) {
 		String device="device/"+deviceId;
-		Map<String,String> data=new HashMap<>();
+//		Map<String,String> data=new HashMap<>();
 		double batVoltage=dao.getBatU100mv(device);
 		double batCurrent=panelPowerLocal/batVoltage;
 		putValue(data,"batteryCurrent",batCurrent);
@@ -453,7 +478,7 @@ public class Service {
 		}
 	//	dao.setBatCurEnergy(device,batCurCap);
 		putValue(data,"batteryCurrentCapacity",batCurCap);
-		dao.setUpdate(device, data);
+//		dao.setUpdate(device, data);
 		
 		
 	}
@@ -461,7 +486,7 @@ public class Service {
 
 
 
-	public void setLedLevel(String deviceId, int level) {
+	public void setLedLevel(String deviceId, int level,Map<String,String> data) {
 		String device="device/"+deviceId;
 		dao.setLedLevel(device,level);
 		double maxCurrent=dao.getLedCurrent(device);
@@ -469,10 +494,10 @@ public class Service {
 		System.out.println("Led Current From setLampLevel:"+ledCurrent);
 		double ledVoltage=dao.getLedU100mv(device);
 		double ledPower=ledVoltage*ledCurrent;
-		Map<String,String> data=new HashMap<>();
+//		Map<String,String> data=new HashMap<>();
 		putValue(data,"loadCurrent",ledCurrent);
 		putValue(data,"loadPower",ledPower);
-		dao.setUpdate(device, data);
+//		dao.setUpdate(device, data);
 		
 	
 		
@@ -481,7 +506,8 @@ public class Service {
 
 
 
-	public void setLOADORCHANGE(String device, int i) {
+	public void setLOADORCHANGE(String deviceId, int i) {
+		String device="device/"+deviceId;
 		dao.setLoadOrChange(device, i);
 		
 	}
@@ -507,7 +533,10 @@ public class Service {
 		double x=Double.parseDouble(dao.getLatitude(device));
 		double y=Double.parseDouble(dao.getLongitude(device));
 		if(i>=57490 && i<=57519)
-			scheduleUpdate(deviceId,i,(int)value,x,y);
+			scheduleUpdate(deviceId,i,((Number) value).intValue(),x,y);
+		if(i==57347) {
+			dao.setBatteryVoltage(device,(int)value);
+		}
 			
 	}
 
@@ -653,10 +682,14 @@ public class Service {
 
 
 
-	public void updateManualTime(String deviceId, long duration) {
+	public long updateManualTime(String deviceId, long duration) {
 		String device="device/"+deviceId;
 		long time=dao.getManualTime(device);
+		if(time!=65535) {
 		dao.setManualTime(device,time-duration);
+		return time-duration;
+		}
+		return time;
 	}
 
 
@@ -693,7 +726,7 @@ public class Service {
 		String device="device/"+deviceId;
 		double panelUnderVoltage=dao.getPanelUnderVoltage(device);
 		double panelVoltage=dao.getPvU100mv(device);
-		if(panelUnderVoltage>=panelVoltage&&dao.getLOADORCHANGE(device)==1)
+		if(panelUnderVoltage>=panelVoltage&&dao.getLOADORCHANGE(device)==1&&dao.getCannotUpdate(device)!=1)
 				return true;
 		return false;
 	}
@@ -705,7 +738,7 @@ public class Service {
 		String device="device/"+deviceId;
 		double panelOverVoltage=dao.getPanelOverVoltage(device);
 		double panelVoltage=dao.getPvU100mv(device);
-		if(panelOverVoltage<=panelVoltage&&dao.getLOADORCHANGE(device)==1)
+		if(panelOverVoltage<=panelVoltage&&dao.getLOADORCHANGE(device)==1&&dao.getCannotUpdate(device)!=1)
 				return true;
 		return false;
 	}
@@ -763,7 +796,7 @@ public class Service {
 
 	public boolean isBatteryOverCurrent(String deviceId) {
 		String device="device/"+deviceId;
-		if(dao.getLOADORCHANGE(device)==1&&dao.getBatI10ma(device)>=dao.getBatOverCurrent(device))
+		if(dao.getLOADORCHANGE(device)==1&&dao.getBatI10ma(device)>dao.getBatOverCurrent(device))
 			return true;
 		return false;
 	}
@@ -778,19 +811,19 @@ public class Service {
 		double temp=dao.getDeviceTemp(device);
 		double batCurrent=dao.getBatI10ma(device);
 		if(batCurrent<0.05) {
-			temp-=0.1;
-		}
-		else if(batCurrent<0.1) {
 			temp-=0.01;
 		}
+		else if(batCurrent<0.1) {
+			temp-=0.001;
+		}
 		else if(batCurrent>0.2) {
-			temp+=0.001;
+			temp+=0.0001;
 		}
 		else if(batCurrent>0.3) {
-			temp+=0.01;
+			temp+=0.005;
 		}
-		else if(batCurrent>1) {
-			temp+=0.1;
+		else if(batCurrent>0.5) {
+			temp+=0.01;
 		}
 		if(temp>35)
 			temp=35;
@@ -806,8 +839,10 @@ public class Service {
 	public void clearDayBurner(String deviceId) {
 		String device="device/"+deviceId;
 		int workState=dao.getWorkState(device);
-		workState&=63487;
-		dao.setWorkState(device,workState);
+		if((workState&2048)==1) {
+			workState&=63487;
+			dao.setWorkState(device,workState);
+		}
 	}
 
 
@@ -861,6 +896,12 @@ public class Service {
 		double temp=getOverTemp(deviceId);
 		dao.setDeviceTemp(device,temp+1);
 	}
+	
+	public void clearDeviceTemp(String deviceId) {
+		String device="device/"+deviceId;
+		double temp=getOverTemp(deviceId);
+		dao.setDeviceTemp(device,temp-5);
+	}
 
 	
 	public void riseBatteryOverCurrent(String deviceId) {
@@ -868,19 +909,33 @@ public class Service {
 		double current=dao.getBatOverCurrent(device);
 		dao.setBatI10ma(device, current+1);
 	}
+	
+	public void clearBatteryOverCurrent(String deviceId) {
+		String device="device/"+deviceId;
+		double current=dao.getBatOverCurrent(device);
+		dao.setBatI10ma(device, current-0.1);
+	}
 
 
 	public void riseOverDischargeVoltage(String deviceId) {
 		Map<String,String> data=new HashMap<>();
 		String device="device/"+deviceId;
 		double batOverDischargeVoltage=dao.getBatOverDischargeVoltage(device);
-		updateBatSpecWithVoltage(data, device, batOverDischargeVoltage);
+		updateBatSpecWithVoltage( device, batOverDischargeVoltage);
+	}
+	
+	public void clearBatteryVoltageFault(String deviceId) {
+		String device="device/"+deviceId;
+		double batOverDischargeVoltage=dao.getBatOverDischargeVoltage(device);
+		double batOverChargeVoltage=dao.getBatOverChargeVoltage(device);
+		updateBatSpecWithVoltage(device, (batOverDischargeVoltage+batOverChargeVoltage)/2);
 	}
 
 
 
 
-	void updateBatSpecWithVoltage(Map<String, String> data, String device, double batVoltage) {
+	int updateBatSpecWithVoltage(String device, double batVoltage) {
+		Map<String, String> data=new HashMap<>();
 		//dao.setBatU100mv(device, batOverDischargeVoltage);
 		putValue(data,"batteryVoltage",batVoltage);
 		long batteryCapacity=dao.getBatCapEnergy(device);
@@ -893,8 +948,9 @@ public class Service {
 		//dao.setBatCurEnergy(device, batteryCurrentCapacity);
 		putValue(data,"batteryCurrentCapacity",batteryCurrentCapacity);
 		putValue(data,"batteryPercentage",(int)(((double)batteryCurrentCapacity/batteryCapacity)*100));
-		updateCannotChange(device,data,batVoltage);
+		int temp=updateCannotChange(device,data,batVoltage,dao.getCannotUpdate(device));
 		dao.setUpdate(device, data);
+		return temp;
 	}
 
 
@@ -905,18 +961,18 @@ public class Service {
 
 	public void riseBatteryOverVoltage(String deviceId) {
 		String device="device/"+deviceId;
-		Map<String,String> data=new HashMap<>();
+//		Map<String,String> data=new HashMap<>();
 		double batteryOverVoltage=dao.getBatOverChargeVoltage(device);
-		updateBatSpecWithVoltage(data, device, batteryOverVoltage);
+		updateBatSpecWithVoltage(device, batteryOverVoltage);
 
 	}
 
 
 	public void riseBatteryUnderVoltage(String deviceId) {
 		String device="device/"+deviceId;
-		Map<String,String> data=new HashMap<>();
+//		Map<String,String> data=new HashMap<>();
 		double batteryUnderVoltage=dao.getBatEmptyChargeVoltage(device);
-		updateBatSpecWithVoltage(data, device, batteryUnderVoltage);
+		updateBatSpecWithVoltage( device, batteryUnderVoltage);
 		
 	}
 
@@ -925,10 +981,18 @@ public class Service {
 
 	public void risePanelUnderVoltage(String deviceId) {
 		String device="device/"+deviceId;
+		dao.setPanelTemp(device, 31);		
 		double panelVoltage=dao.getPanelUnderVoltage(device);
 		System.out.println("Load or Change From risePanelOverVoltage:"+dao.getLOADORCHANGE(device));
-		System.out.println(dao.getSunSet(device));
 		dao.setPvU100mv(device, panelVoltage);
+	}
+	
+	public void clearPanelFault(String deviceId) {
+		String device="device/"+deviceId;
+		dao.setPanelTemp(device, 25);	
+		double panelVoltage=(dao.getPanelUnderVoltage(device)+dao.getPanelOverVoltage(device))/2;
+		dao.setPvU100mv(device, panelVoltage);
+		
 	}
 
 	
@@ -937,7 +1001,7 @@ public class Service {
 	public void risePanelOverVoltage(String deviceId) {
 		String device="device/"+deviceId;
 		System.out.println("Load or Change From risePanelOverVoltage:"+dao.getLOADORCHANGE(device));
-		
+		dao.setPanelTemp(device, 20);
 		double panelVoltage=dao.getPanelOverVoltage(device);
 		dao.setPvU100mv(device, panelVoltage);
 	}
@@ -946,16 +1010,60 @@ public class Service {
 
 
 	public void riseDayBurner(String deviceId) {
-		setLedLevel(deviceId, 1);
+		Map<String,String> data =new HashMap<>();
+		String device="device/"+deviceId;
+		setLedLevel(deviceId, 5,data);
+		dao.setUpdate(device, data);
+	}
+	
+	public void clearDayBurnerFault(String deviceId) {
+		Map<String,String> data =new HashMap<>();
+		String device="device/"+deviceId;
+		setLedLevel(deviceId, 0,data);
+		dao.setUpdate(device, data);
 	}
 
 
 
 
 	public void riseNightOutage(String deviceId) {
-		
+		Map<String,String> data =new HashMap<>();
+		String device="device/"+deviceId;
 		riseOverDischargeVoltage(deviceId);
-		setLedLevel(deviceId,0);
+		setLedLevel(deviceId,0,data);
+		dao.setUpdate(device, data);
+		
+	}
+	
+	public void clearNightOutageFault(String deviceId) {
+		
+		clearBatteryVoltageFault(deviceId);
+		
+	}
+
+
+
+
+	public void runAutomateDatas(String device) {
+		int elapsedTime=(int)((System.currentTimeMillis()-DataScheduler.lastTimeUpdatedAutomateDatas)/1000);
+		System.out.println("Elapsed Time of AutoMate Datas:"+elapsedTime);
+		AutomateDatas manualUpdate=new AutomateDatas(elapsedTime);
+		String deviceId=device.split("/")[1];
+		System.out.println(deviceId);
+		manualUpdate.updateDevice(deviceId);
+		manualUpdate.duration=0;
+		manualUpdate.updateDevice(deviceId);
+		manualUpdate.duration=60;
+	}
+
+
+
+
+	public void setUpdate(String deviceId, Map<String, String> data) {
+		if(data!=null&&!data.isEmpty()) {
+		String device="device/"+deviceId;
+		dao.setUpdate(device, data);
+		}
 		
 	}
 

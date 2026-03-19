@@ -1,5 +1,6 @@
 package ohlisimulator.dao;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -10,8 +11,11 @@ import java.util.Map;
 import java.util.Properties;
 
 import ohlisimulator.main.SunRiseSunSetCalc;
+import ohlisimulator.service.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.resps.Tuple;
 
 public class DragonFly extends Dao {
@@ -19,101 +23,109 @@ public class DragonFly extends Dao {
 	private static final JedisPool pool = new JedisPool("localhost", 6379);
 	Properties props;
 	InputStream input;
-	int batteryVoltage;
-	double batteryFullChargeVoltage = 0;
-	double batteryEmptyChargeVoltage = 0;
-	double batteryOverChargeVoltage=0;
-	double batteryOverDischargeVoltage=0;
-	double batteryOverChargeReturnVoltage=0;
-	double batteryOverDischargeReturnVoltage=0;
-	double panelOverVoltage=0;
-	double panelUnderVoltage=0;
-	double overTemperature=0;
-	double batteryOverCurrent=0;
-	double ledRatedPower = 0;
-	double ledRatedVoltage = 0;
-	long dataSchedulerDuration=0;
+	
 	static String region;
 
-	private void loadConfig(){
-		try {
-			Properties props = new Properties();
-			InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
+//	private DeviceConfig loadBatteryVoltage() {
+//		try {
+//			Properties props = new Properties();
+//			InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
+//
+//			props.load(input);
+//
+//			batteryVoltage = Integer.parseInt(props.getProperty("batteryVoltage"));
+//			return loadConfig(batteryVoltage);
+//		}
+//		catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//		return null;
+//		
+//	}
+//	
+	private DeviceConfig loadConfig(int batteryVoltage) {
 
-			props.load(input);
+	    DeviceConfig config = new DeviceConfig();
 
-			batteryVoltage = Integer.parseInt(props.getProperty("batteryVoltage"));
+	    try {
+	        Properties props = new Properties();
+	        InputStream input = new FileInputStream("config/config.properties");
 
-			if ((batteryVoltage == 12)) {
-				batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage1"));
-				batteryEmptyChargeVoltage = Double.parseDouble(props.getProperty("BatteryEmptyChargeVoltage1"));
-				batteryOverChargeVoltage= Double.parseDouble(props.getProperty("BatteryOverChargeVoltage1"));
-				batteryOverDischargeVoltage= Double.parseDouble(props.getProperty("BatteryOverDischargeVoltage1"));
-				batteryOverChargeReturnVoltage= Double.parseDouble(props.getProperty("BatteryOverChargeReturnVoltage1"));
-				batteryOverDischargeReturnVoltage= Double.parseDouble(props.getProperty("BatteryOverDischargeReturnVoltage1"));
-				panelOverVoltage=Double.parseDouble(props.getProperty("PanelOverVoltage1"));
-				panelUnderVoltage=Double.parseDouble(props.getProperty("PanelUnderVoltage1"));
-			}
-			if ((batteryVoltage == 24)) {
-				batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage2"));
-				batteryEmptyChargeVoltage = Double.parseDouble(props.getProperty("BatteryEmptyChargeVoltage2"));
-				batteryOverChargeVoltage= Double.parseDouble(props.getProperty("BatteryOverChargeVoltage2"));
-				batteryOverDischargeVoltage= Double.parseDouble(props.getProperty("BatteryOverDischargeVoltage2"));
-				batteryOverChargeReturnVoltage= Double.parseDouble(props.getProperty("BatteryOverChargeReturnVoltage2"));
-				batteryOverDischargeReturnVoltage= Double.parseDouble(props.getProperty("BatteryOverDischargeReturnVoltage2"));
-				panelOverVoltage=Double.parseDouble(props.getProperty("PanelOverVoltage2"));
-				panelUnderVoltage=Double.parseDouble(props.getProperty("PanelUnderVoltage2"));
-			}
-			batteryOverCurrent=Double.parseDouble(props.getProperty("BatteryOverCurrent"));
-			overTemperature=Double.parseDouble(props.getProperty("OverTemperature"));
-			ledRatedPower = Double.parseDouble(props.getProperty("LedRatedPower"));
-			ledRatedVoltage = Double.parseDouble(props.getProperty("LedVoltage"));
-			region=props.getProperty("Region");
-			dataSchedulerDuration=Long.parseLong(props.getProperty("dataSchedulerDuration"));
+	        props.load(input);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	        if (batteryVoltage == 12) {
+	            config.batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage1"));
+	            config.batteryEmptyChargeVoltage = Double.parseDouble(props.getProperty("BatteryEmptyChargeVoltage1"));
+	            config.batteryCapacity=Integer.parseInt(props.getProperty("BatteryAmpereHours1"))*3600*1000;
+	            config.batteryOverChargeVoltage = Double.parseDouble(props.getProperty("BatteryOverChargeVoltage1"));
+	            config.batteryOverDischargeVoltage = Double.parseDouble(props.getProperty("BatteryOverDischargeVoltage1"));
+	            config.batteryOverChargeReturnVoltage = Double.parseDouble(props.getProperty("BatteryOverChargeReturnVoltage1"));
+	            config.batteryOverDischargeReturnVoltage = Double.parseDouble(props.getProperty("BatteryOverDischargeReturnVoltage1"));
+	            config.panelOverVoltage = Double.parseDouble(props.getProperty("PanelOverVoltage1"));
+	            config.panelUnderVoltage = Double.parseDouble(props.getProperty("PanelUnderVoltage1"));
+	        }
+
+	        if (batteryVoltage == 24) {
+	            config.batteryFullChargeVoltage = Double.parseDouble(props.getProperty("BatteryFullChargeVoltage2"));
+	            config.batteryEmptyChargeVoltage = Double.parseDouble(props.getProperty("BatteryEmptyChargeVoltage2"));
+	            config.batteryCapacity=Integer.parseInt(props.getProperty("BatteryAmpereHours2"))*3600*1000;
+	            config.batteryOverChargeVoltage = Double.parseDouble(props.getProperty("BatteryOverChargeVoltage2"));
+	            config.batteryOverDischargeVoltage = Double.parseDouble(props.getProperty("BatteryOverDischargeVoltage2"));
+	            config.batteryOverChargeReturnVoltage = Double.parseDouble(props.getProperty("BatteryOverChargeReturnVoltage2"));
+	            config.batteryOverDischargeReturnVoltage = Double.parseDouble(props.getProperty("BatteryOverDischargeReturnVoltage2"));
+	            config.panelOverVoltage = Double.parseDouble(props.getProperty("PanelOverVoltage2"));
+	            config.panelUnderVoltage = Double.parseDouble(props.getProperty("PanelUnderVoltage2"));
+	        }
+
+//	        config.batteryOverCurrent = Double.parseDouble(props.getProperty("BatteryOverCurrent"));
+	        config.overTemperature = Double.parseDouble(props.getProperty("OverTemperature"));
+	        config.ledRatedPower = Double.parseDouble(props.getProperty("LedRatedPower"));
+	        config.ledRatedVoltage = Double.parseDouble(props.getProperty("LedVoltage"));
+	        config.batteryOverCurrent =config.ledRatedPower/config.ledRatedVoltage;
+	        region = props.getProperty("Region"+props.getProperty("region"));
+	        config.dataSchedulerDuration = Long.parseLong(props.getProperty("dataSchedulerDuration"));
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+
+	    return config;
 	}
 	
 	
 	
 
 	public boolean registerDevice(String deviceId, String x, String y, long time, List<Long> duration,
-			long batteryCapacity, int batteryVoltage) {
+			 int batteryVoltage) {
 		String device = "device/" + deviceId;
-		setBatteryVoltage(device, batteryVoltage);
-		loadConfig();
-		double BAT_U_100MV = batteryFullChargeVoltage;
+		
+		DeviceConfig config=setBatteryVoltage(device, batteryVoltage);
+		double BAT_U_100MV = config.batteryFullChargeVoltage;
 		double DEVICE_TEMP = 25;
 		setLatitude(device, x);
 		setLongitude(device, y);
 		int loadOrChange=setSunSetSunRise(device,x,y);
 		setLoadOrChange(device, loadOrChange);
 		setCannotUpdate(device,1);
-		setLedRatedPower(device);
+		setLedRatedPower(device,config.ledRatedPower);
 		setBatCapSoc(device, 100);
-		setBatCurEnergy(device, batteryCapacity);
-		setBatCapEnergy(device, batteryCapacity);
+		
 //		setBatU100mv(device, BAT_U_100MV);
-		setBatU100mv(device, batteryFullChargeVoltage);
-		setBatOverChargeVoltage(device,batteryOverChargeVoltage);
-		setBatOverDischargeVoltage(device,batteryOverDischargeVoltage);
-		setBatOverChargeReturnVoltage(device,batteryOverChargeReturnVoltage);
-		setBatOverDischargeReturnVoltage(device,batteryOverDischargeReturnVoltage);
-		setBatEmptyChargeVoltage(device,batteryEmptyChargeVoltage);
-		setBatFullChargeVoltage(device,batteryFullChargeVoltage);
+		setBatOverChargeVoltage(device,config.batteryOverChargeVoltage);
+		setBatOverDischargeVoltage(device,config.batteryOverDischargeVoltage);
+		setBatOverChargeReturnVoltage(device,config.batteryOverChargeReturnVoltage);
+		setBatOverDischargeReturnVoltage(device,config.batteryOverDischargeReturnVoltage);
+		
 		setBatI10ma(device, 0);
-		setBatOverCurrent(device,batteryOverCurrent);
+		setBatOverCurrent(device,config.batteryOverCurrent);
 		setDeviceTemp(device, DEVICE_TEMP);
-		setOverTemp(device,overTemperature);
-		setLedU100mv(device, ledRatedVoltage);
+		setOverTemp(device,config.overTemperature);
+		setLedU100mv(device, config.ledRatedVoltage);
 		setLedI10ma(device, 0);
-		setLedOverCurrent(device,ledRatedPower/ledRatedVoltage);
+		setLedOverCurrent(device,config.ledRatedPower/config.ledRatedVoltage);
 		setLedPowerIn(device, 0);
 		setPvU100mv(device, 0);
-		setPanelOverVoltage(device,panelOverVoltage);
-		setPanelUnderVoltage(device,panelUnderVoltage);
+		
 		setPvI10ma(device, 0);
 		setChargePower1w(device, 0);
 		setPanelTemp(device, 25);
@@ -135,18 +147,21 @@ public class DragonFly extends Dao {
 		setWorkState(device, 0);
 		setDayLengthIs(device, 0);
 		setNightLengthIs(device, 0);
-		setDataSchedulerDuration(device,dataSchedulerDuration);
+		setDataSchedulerDuration(device,config.dataSchedulerDuration*1000*60);
 		setManualPower(device,0);
 		setManualTime(device,0);
 		
+		setLuxVoltage(device,3);
+		setLedPowerSavingMode(device,0);
+		setLedControlDelayTime(device,0);
 		
-		setLedCurrent(device,ledRatedPower/ledRatedVoltage);
+		setLedCurrent(device,config.ledRatedPower/config.ledRatedVoltage);
 		setLedLevel(device,0);
 		setTimePeriod(device,0);
 		
 		
 		updateRetry(deviceId, time);
-		nextRetry(deviceId, duration.get(0));
+		nextRetry(deviceId, duration.get(0),time);
 		return true;
 	}
 	
@@ -189,7 +204,9 @@ public class DragonFly extends Dao {
 	}
 	
 	public void setManualTime(String device, long i) {
-		setManualTime(device,String.valueOf(i));
+		if(i<0)
+			i=0;
+		 setManualTime(device,String.valueOf(i));
 		
 	}
 
@@ -404,6 +421,55 @@ public class DragonFly extends Dao {
 		}
 	}
 
+	
+	public void setLuxVoltage(String device,double value) {
+		setLuxVoltage(device,String.valueOf(value));
+	}
+	
+	public void setLuxVoltage(String device, String valueOf) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, "LUX_VOLTAGE",valueOf);
+		}
+	}
+	
+	public double getLuxVoltage(String device) {
+		try (Jedis jedis = pool.getResource()) {
+			return Double.parseDouble(jedis.hget(device, "LUX_VOLTAGE"));
+		}
+	}
+	
+	public void setLedPowerSavingMode(String device,int value) {
+		setLedPowerSavingMode(device,String.valueOf(value));
+	}
+	
+	public void setLedPowerSavingMode(String device, String valueOf) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, "LED_POWER_SAVING_MODE",valueOf);
+		}
+	}
+	
+	public int getLedPowerSavingMode(String device) {
+		try (Jedis jedis = pool.getResource()) {
+			return Integer.parseInt(jedis.hget(device, "LED_POWER_SAVING_MODE"));
+		}
+	}
+	
+	public void setLedControlDelayTime(String device,int value) {
+		setLedControlDelayTime(device,String.valueOf(value));
+	}
+	
+	public void setLedControlDelayTime(String device, String valueOf) {
+		try (Jedis jedis = pool.getResource()) {
+			jedis.hset(device, "LED_CONTROL_DELAY_TIME_1S",valueOf);
+		}
+	}
+	
+	public int getLedControlDelayTime(String device) {
+		try (Jedis jedis = pool.getResource()) {
+			return Integer.parseInt(jedis.hget(device, "LED_CONTROL_DELAY_TIME_1S"));
+		}
+	}
+	
 	public void setLedCurrent(String device,double value) {
 		setLedCurrent(device,String.valueOf(value));
 	}
@@ -436,13 +502,13 @@ public class DragonFly extends Dao {
 		}
 	}
 
-	public void setLedRatedPower(String device) {
+	public void setLedRatedPower(String device,double ledRatedPower) {
 		try (Jedis jedis = pool.getResource()) {
 			jedis.hset(device, "LED_RATED_POWER", String.valueOf(ledRatedPower));
 		}
 	}
 
-	public void setLedRatedVoltage(String device) {
+	public void setLedRatedVoltage(String device,double ledRatedVoltage) {
 		try (Jedis jedis = pool.getResource()) {
 			jedis.hset(device, "LED_RATED_VOLTAGE", String.valueOf(ledRatedVoltage));
 		}
@@ -482,8 +548,20 @@ public class DragonFly extends Dao {
 		}
 	}
 
-	public void setBatteryVoltage(String device, int batteryVoltage) {
+	public DeviceConfig setBatteryVoltage(String device, int batteryVoltage) {
 		setBatteryVoltage(device, String.valueOf(batteryVoltage));
+		DeviceConfig config=loadConfig(batteryVoltage);
+//		System.out.println("From setBatteryVoltage:");
+//		System.out.println("Battery Empty Charge Voltage:"+batteryEmptyChargeVoltage);
+//		System.out.println("Battery Full Charge Voltage:"+batteryFullChargeVoltage);
+		setBatEmptyChargeVoltage(device,config.batteryEmptyChargeVoltage);
+		setBatFullChargeVoltage(device,config.batteryFullChargeVoltage);
+		setPanelOverVoltage(device,config.panelOverVoltage);
+		setPanelUnderVoltage(device,config.panelUnderVoltage);
+		setBatCurEnergy(device, config.batteryCapacity);
+		setBatCapEnergy(device, config.batteryCapacity);
+		setBatU100mv(device, config.batteryFullChargeVoltage);
+		return config;
 	}
 
 	public void setBatteryVoltage(String device, String batteryVoltage) {
@@ -554,9 +632,9 @@ public class DragonFly extends Dao {
 			SunRiseSunSetCalc calc = new SunRiseSunSetCalc();
 			ZonedDateTime sunset = calc.getSunSet(x, y, 0);
 			ZonedDateTime sunrise = calc.getSunRise(x, y, 0);
-			if (now.isBefore(sunrise))
+			if (now.isBefore(sunrise)&&now.isBefore(sunset))
 				sunset = calc.getSunSet(x, y, -1);
-			else if (now.isAfter(sunset))
+			if (now.isAfter(sunset)&&now.isAfter(sunrise))
 				sunrise = calc.getSunRise(x, y, 1);
 			 Map<String, String> data = new HashMap<>();
 		        data.put("SUNRISE", sunrise.toString());
@@ -570,7 +648,7 @@ public class DragonFly extends Dao {
 	}
 
 	public void setLoadOrChange(String device, int LOAD_OR_CHANGE) {
-
+		System.out.println("Changing Load:"+LOAD_OR_CHANGE);
 		setLoadOrChange(device, String.valueOf(LOAD_OR_CHANGE));
 	}
 
@@ -1060,17 +1138,17 @@ public class DragonFly extends Dao {
 		}
 	}
 
-	public void nextRetry(String deviceId, long duration) {
+	public void nextRetry(String deviceId, long duration,long now) {
 		try (Jedis jedis = pool.getResource()) {
-			double currentRetry;
-			try {
-				currentRetry = jedis.zscore("nextretry", deviceId);
-			} catch (NullPointerException e) {
-				currentRetry = jedis.zscore("undiscovered_devices", deviceId);
-			}
-			System.out.println("Current Retry in DragonFly:" + currentRetry);
-			long nextRetry = (long) currentRetry + duration;
-			jedis.zadd("nextretry", (double) nextRetry, deviceId);
+//			double currentRetry;
+//			try {
+//				currentRetry = jedis.zscore("nextretry", deviceId);
+//			} catch (NullPointerException e) {
+//				currentRetry = jedis.zscore("undiscovered_devices", deviceId);
+//			}
+//			System.out.println("Current Retry in DragonFly:" + currentRetry);
+			long nextRetry = (long) now + duration-500;
+			jedis.zadd("nextretry",  nextRetry, deviceId);
 		}
 	}
 
@@ -1080,6 +1158,8 @@ public class DragonFly extends Dao {
 			jedis.zrem("nextretry", deviceId);
 			long now = System.currentTimeMillis();
 			jedis.zadd("discovered_devices", now, deviceId);
+			System.out.println("Added To Discovered Devices");
+			System.out.println(jedis.zscore("discovered_devices", deviceId));
 		}
 	}
 
@@ -1124,7 +1204,7 @@ public class DragonFly extends Dao {
 	public List<String> getCurrentRetryReadyDevice(long now) {
 
 		try (Jedis jedis = pool.getResource()) {
-			return jedis.zrangeByScore("nextretry", 0, now);
+			return jedis.zrangeByScore("nextretry", 0, now+500);
 		}
 	}
 
@@ -1147,12 +1227,21 @@ public class DragonFly extends Dao {
 	public List<String> getAllDevices() {
 		try (Jedis jedis = pool.getResource()) {
 
-			List<String> discovered = jedis.zrange("discovered_devices", 0, -1);
+			Pipeline pipeline = jedis.pipelined();
 
-			List<String> undiscovered = jedis.zrange("undiscovered_devices", 0, -1);
+		    Response<List<String>> discoveredRes =
+		            pipeline.zrange("discovered_devices", 0, -1);
 
-			discovered.addAll(undiscovered);
-			return discovered;
+		    Response<List<String>> undiscoveredRes =
+		            pipeline.zrange("undiscovered_devices", 0, -1);
+
+		    pipeline.sync(); // execute both commands together
+
+		    List<String> result = new ArrayList<>();
+		    result.addAll(discoveredRes.get());
+		    result.addAll(undiscoveredRes.get());
+
+		    return result;
 		}
 	}
 
@@ -1173,7 +1262,7 @@ public class DragonFly extends Dao {
 				value = 0;
 			else {
 				try {
-					System.out.println("Field from getFieldValue:"+field);
+					//System.out.println("Field from getFieldValue:"+field);
 					value = Double.parseDouble(jedis.hget(device, field));
 				} catch (NullPointerException e) {
 					System.out.println("Null Pointer Exception:" + field);
@@ -1212,15 +1301,18 @@ public class DragonFly extends Dao {
 			for (String deviceId : StatsDevice) {
 				String device="device/"+deviceId;
 				long duration=getDataSchedulerDuration(device);
-				long time = now - duration;
-				StatsReadyDevice = jedis.zrangeByScore("discovered_devices", 0, time);
-				for (String dev : StatsReadyDevice) {
-					jedis.zadd("discovered_devices", now, dev);
+				if(duration!=0) {
+					long time = now - duration;
+	//				StatsReadyDevice = jedis.zrangeByScore("discovered_devices", 0, time);
+	//				for (String dev : StatsReadyDevice) {
+	//					jedis.zadd("discovered_devices", now, dev);
+	//				}
+					if(isScoreLesser(deviceId,time)) {
+						System.out.println("Scheduled at:"+now);
+						jedis.zadd("discovered_devices", now-500, deviceId);
+						StatsReadyDevice.add(deviceId);
+					}
 				}
-//				if(isScoreLesser(deviceId,time)) {
-//					jedis.zadd("discovered_devices", now, deviceId);
-//					StatsReadyDevice.add(deviceId);
-//				}
 			}
 		}
 		return StatsReadyDevice;
@@ -1236,8 +1328,8 @@ public class DragonFly extends Dao {
 	        if (score == null) {
 	            return false; // device not present
 	        }
-	        System.out.println("Score:"+score);
-	        System.out.println("Check Time:"+checkTime);
+//	        System.out.println("Score:"+score);
+//	        System.out.println("Check Time:"+checkTime);
 	        return score < checkTime;
 	    }
 	}
@@ -1260,8 +1352,30 @@ public class DragonFly extends Dao {
 	public void setUpdateField(String device,String field,String value) {
 		try (Jedis jedis = pool.getResource()) {
 			jedis.hset(device, field,value);
+			checkForManualMode(device, field, value);
 			value=jedis.hget(device, field);
 			System.out.println("From Set Update Field"+device+field+value);
+		}
+		catch(IllegalArgumentException e) {
+			System.out.println("IllegalArgumentException");
+		}
+	}
+
+
+
+
+	void checkForManualMode(String device, String field, String value) {
+		if(field.equals("MANUAL_MODE_TIME")&&Integer.parseInt(value)>0) {
+			if(getManualPower(device)!=0) {
+//					System.out.println("Hello Changed Load to 0");
+				setLoadOrChange(device,0);
+				
+//					System.out.println("After Updating :"+getLOADORCHANGE(device));
+			}else {
+				setLoadOrChange(device,1);
+			}
+			Service service=new Service();
+			service.runAutomateDatas(device);
 		}
 	}
 	
@@ -1327,3 +1441,6 @@ public class DragonFly extends Dao {
 	}
 
 }
+
+
+

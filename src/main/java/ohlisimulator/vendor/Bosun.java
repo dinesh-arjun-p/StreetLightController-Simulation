@@ -1,7 +1,11 @@
 package ohlisimulator.vendor;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -34,16 +38,19 @@ public class Bosun extends Vendor {
 		BAT_RECHARGE_U_100MV("E009"),
 		BAT_OVER_DISCHARGE_BACK_U("E00B"),
 		BAT_OVER_DISCH_U("E00D"),
-		BAT_OVER_VOLT("E005"),
-		BAT_UNDER_U("E00C"),
+		BAT_OVER_VOLT("F005"),
+		BAT_UNDER_U("F00C"),
 		
 		
 		
 		TEST_POWER_COMMAND("DF0A"),
 		TEST_TIME_COMMAND("DF0B"),
 		
+		LIGHT_CONTROL_U_1V("E01F"),
+		
 		 LED_I_SET_10MA("E08D"),
 		    LED_POWER_SAVING_MODE("E08E"),
+		    LED_CONTROL_DELAY_TIME_1S("E08F"),
 		    LED_TIME1_1S("E092"),
 		    LED_SENSOR_ON_P1("E093"),
 		    LED_TIME2_1S("E095"),
@@ -83,7 +90,7 @@ public class Bosun extends Vendor {
 
 	public enum Multiplier {
 		LOAD_OR_CHANGE(1), FAULT_CODE_1(1), FAULT_CODE_2(1), BAT_CAP_SOC(1), BAT_U_100MV(10), BAT_I_10MA(100),
-		DEVICE_TEMP(1), LED_U_100MV(10), LED_I_10MA(10), LED_POWER_1W(1), PV_U_100MV(10), PV_I_10MA(0.1),
+		DEVICE_TEMP(1), LED_U_100MV(10), LED_I_10MA(100), LED_POWER_1W(1), PV_U_100MV(10), PV_I_10MA(100),
 		CHARGE_POWER_1W(1), DC_ON_OFF(1), MIN_BAT_U_IN_DAY_100MV(10), MAX_BAT_U_IN_DAY_100MV(10),
 		MAX_CHARGE_BAT_I_IN_DAY_10MA(0.1), MAX_DISCHARGE_BAT_I_IN_DAY_10MA(10), MAX_CHARGE_POWER_IN_DAY_1W(10),
 		MAX_DISCHARGE_POWER_IN_DAY_1W(10), CHARGE_AH_IN_DAY(10), DISCHARGE_AH_IN_DAY(10), CHARGE_WH_IN_DAY(100),
@@ -104,11 +111,13 @@ public class Bosun extends Vendor {
 		
 		TEST_POWER_COMMAND(1),
 		TEST_TIME_COMMAND(1),
+	
+		LIGHT_CONTROL_U_1V(1),
 		
 		
-		
-		LED_I_SET_10MA(10),
+		LED_I_SET_10MA(100),
 	    LED_POWER_SAVING_MODE(1),
+	    LED_CONTROL_DELAY_TIME_1S(1),
 	    LED_TIME1_1S(1),
 	    LED_SENSOR_ON_P1(1),
 	    LED_TIME2_1S(1),
@@ -131,7 +140,7 @@ public class Bosun extends Vendor {
 		LED_MORNING_SENSOR_ON_P(1),
 		
 		
-		DATA_SCHEDULER(1),
+		DATA_SCHEDULER(1.0/60000.0),
 		;
 
 		private final double address;
@@ -168,7 +177,7 @@ public class Bosun extends Vendor {
 
 	}
 
-	public boolean deviceGenerated(int deviceSerialNumberStart, long batteryCapacity, int batteryVoltage) {
+	public boolean deviceGenerated(int deviceSerialNumberStart,  int batteryVoltage) {
 		String deviceId = String.valueOf(deviceSerialNumberStart);
 		Location loc = new Location();
 		JSONObject device = new JSONObject();
@@ -184,10 +193,10 @@ public class Bosun extends Vendor {
 		device.put("T", "3233");
 		device.put("N", "3200");
 
-		boolean register = registerDevice(deviceSerialNumberStart, device);
+		boolean register = req.registerDevice(deviceId, device,batteryVoltage);
 		if (register) {
 
-			return req.registerDevice(deviceId, device,batteryCapacity,batteryVoltage);
+			return registerDevice(deviceSerialNumberStart, device);
 		}
 		return false;
 	}
@@ -230,32 +239,211 @@ public class Bosun extends Vendor {
 		String message = new String(mqttmsg.getPayload());
 		JSONObject msg = new JSONObject(message);
 		if(deviceId.equals("alarm")) {
-			req.riseAlarm(msg);
+			System.out.println("Alarm");
+			riseAlarm(msg);
+		}
+		if(deviceId.equals("clearalarm")) {
+			System.out.println("clearAlarm");
+			clearAlarm();
 		}
 		else {
-		if (msg.getString("CMD").equals("0")) {
-			req.registration(topic, msg);
-		}
-		if (msg.getString("CMD").equals("1")) {
-			req.obtainControllerInfo(topic);
-		}
-		if (msg.getString("CMD").equals("2")) {
-			parseDData(deviceId, msg);
-		}
-		if (msg.getString("CMD").equals("3")) {
-			req.clearFault(deviceId,msg);
-		}
-		if (msg.getString("CMD").equals("4")) {
-			System.out.println("CMD0");
 			try {
-				listener.closeClient();
+				if (msg.getString("CMD").equals("0")) {
+					req.registration(topic, msg);
+				}
+				if (msg.getString("CMD").equals("1")) {
+					req.obtainControllerInfo(topic);
+				}
+				if (msg.getString("CMD").equals("2")) {
+					parseDData(deviceId, msg);
+				}
+				if (msg.getString("CMD").equals("3")) {
+					clearFault(deviceId,msg);
+				}
+				if (msg.getString("CMD").equals("4")) {
+					try {
+						listener.closeClient();
+					} catch (Exception e) {
+						System.out.println("Error from Bosun Cmd4");
+						e.printStackTrace();
+					}
+				}
+			}
+			catch(Exception e) {
+				
+			}
+		}
+	}	
+	
+		Properties props;
+		int noOfDevice=0;
+		int deviceSerialNumberStart;
+		private void loadConfig(){
+			props= new Properties();
+			
+			try {
+				InputStream input = new FileInputStream("config/config.properties");
+				props.load(input);
+				noOfDevice=Integer.parseInt(props.getProperty("noOfDevices"));
+				deviceSerialNumberStart=Integer.parseInt(props.getProperty("deviceSerialNumberStart"));
+	
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
+	
+		public void riseAlarm(JSONObject msg) {
+		
+			loadConfig();
+			int st=deviceSerialNumberStart;
+			try {
+				st=Integer.parseInt(msg.getString("device"));
+			}catch(Exception e) {
+				
+			}
+			for(int i=0;i<16;i++) {
+				st=riseAlarm(msg,String.valueOf(i),st);
+			}
 		}
-	}	
+		
+		public int riseAlarm(JSONObject msg,String m,int st) {
+			String deviceId;
+			int n;
+			try {
+				
+				n=Integer.parseInt(msg.getString(m));
+				if(n>noOfDevice)
+					n=noOfDevice;
+				System.out.println("No of Alarms for "+m+":"+n);
+				for(int i=0;i<n;i++) {
+					deviceId=String.valueOf(st);
+					if(m.equals("0")) {
+						req.riseDeviceTemp(deviceId);
+					}
+					if(m.equals("1")) {
+						req.riseBatteryOverCurrent(deviceId);
+					}
+					if(m.equals("2")) {
+						req.riseOverDischargeVoltage(deviceId);
+					}
+					if(m.equals("3")) {
+						req.riseBatteryOverVoltage(deviceId);
+					}
+					if(m.equals("4")) {
+						req.riseBatteryUnderVoltage(deviceId);
+					}
+					if(m.equals("9")) {
+						req.risePanelUnderVoltage(deviceId);
+					}
+					if(m.equals("10")) {
+						req.risePanelOverVoltage(deviceId);
+					}
+					if(m.equals("11")) {
+						req.riseDayBurner(deviceId);
+					}
+					if(m.equals("12")) {
+						req.riseNightOutage(deviceId);
+					}
+					req.updateWorkState(deviceId);
+					st++;
+					if(st>=(deviceSerialNumberStart+noOfDevice))
+						st=deviceSerialNumberStart;
+				}
+				
+			}
+			catch(Exception e) {	
+			}
+			return st;
+		}
 
+		
+		public void clearAlarm() {
+			List<String>devices=req.getAllDevice();
+			System.out.println("Clearing Alarm");
+			for(String deviceId:devices) {
+				clearAllFault(deviceId);
+			}
+		}
+		
+		public void clearFault(String deviceId, JSONObject msg) {
+//			Map<String,String> data=new HashMap<>();
+			System.out.println("Clearing Fault ");
+			if(msg.length()>1)
+			for(int i=0;i<16;i++) {
+				clearFault(deviceId,msg,String.valueOf(i));
+				
+			}
+			else
+				clearAllFault(deviceId);
+			
+		}
+		
+		public void clearFault(String deviceId, JSONObject msg,String m) {
+			int n;
+			try {
+				n=Integer.parseInt(msg.getString(m));
+//				if(n>noOfDevice)
+//					n=noOfDevice;
+//				for(int i=0;i<n;i++) {
+					clearFault(deviceId, m);
+					req.updateWorkState(deviceId);
+//				}
+				
+			}
+			catch(Exception e) {	
+			}
+		}
+		
+		public void clearAllFault(String deviceId) {
+			int workState=req.getWorkState(deviceId);
+			System.out.println("WorkState from Clear ALl Fault"+workState);
+			int i=0;
+			
+			while(workState!=0) {
+				int fault=workState&1;
+				if(fault==1) {
+					clearFault(deviceId, String.valueOf(i));
+				}
+				i++;
+				workState>>=1;
+			}
+			req.updateWorkState(deviceId);
+			
+		}
+		
+		void clearFault(String deviceId, String m) {
+			
+			if(m.equals("0")) {
+				req.clearDeviceTemp(deviceId);
+			}
+			if(m.equals("1")) {
+				req.clearBatteryOverCurrent(deviceId);
+			}
+			if(m.equals("2")) {
+				req.clearBatteryVoltageFault(deviceId);
+			}
+			if(m.equals("3")) {
+				req.clearBatteryVoltageFault(deviceId);
+			}
+			if(m.equals("4")) {
+				req.clearBatteryVoltageFault(deviceId);
+			}
+			if(m.equals("9")) {
+				req.clearPanelFault(deviceId);
+			}
+			if(m.equals("10")) {
+				req.clearPanelFault(deviceId);
+			}
+			if(m.equals("11")) {
+				req.clearDayBurnerFault(deviceId);
+			}
+			if(m.equals("12")) {
+				req.clearNightOutageFault(deviceId);
+			}
+			
+		}
+		
+		
 	private void parseDData(String deviceId, JSONObject msg) {
 		boolean crcCheck = true;
 		String receiveD = msg.getString("D");
@@ -264,8 +452,9 @@ public class Bosun extends Vendor {
 			System.out.println("crcTrue");
 		}else {
 			System.out.println("crcFalse");
+			crcCheck=false;
 		}
-		crcCheck = true;
+//		crcCheck = true;
 		if (crcCheck) {
 			int type=getType(receiveD);
 			if (type==9) {
@@ -338,14 +527,22 @@ public class Bosun extends Vendor {
 			        ServiceBosunRegisters.ServiceBosunFieldName.valueOf(BosunField).getDataType()
 			);}
 			catch(Exception e) {
-				finalValue=0;
+				finalValue=0.0;
 			}
 			System.out.println("Field:"+finalValue);
 			//Checking Purpose its wrong
-			if(i>=57490 && i<=57519)
+			if((i>=57490 && i<=57519)||i==57347)
 				req.updateField(deviceId,i,finalValue);
-			else
+			else {
+				if(i>=57352&&i<=57357&&req.getFieldValue(deviceId, "systemVoltage")==24.0) {
+//					System.out.println("Hi Its 24 from WriteData");
+					double val=(double)finalValue;
+					finalValue=(Object)(val*2);
+//					System.out.println("Final Value is from Write Data:"+finalValue);
+					
+				}
 				req.updateField(deviceId, field, finalValue);
+			}
 			pointer+=4;
 		}
 		StringBuffer publishd;
@@ -469,6 +666,8 @@ public class Bosun extends Vendor {
 				field="";
 			}
 		double fieldValue = req.getFieldValue(device, field);
+		if(i>=57352&&i<=57357&&req.getFieldValue(device, "systemVoltage")==24.0)
+			fieldValue/=2;
 		if(field!=null)
 			
 		fieldValue = fieldValue * Multiplier.valueOf(bosunField).getAddress();

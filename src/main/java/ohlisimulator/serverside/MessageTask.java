@@ -17,6 +17,7 @@ class MessageTask {
 
     public void process() {
     	System.out.println("From MessageTask");
+    	
     	vendor.messageArrived(topic, msg);
     }
 }
